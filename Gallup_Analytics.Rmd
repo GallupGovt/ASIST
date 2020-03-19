@@ -1,0 +1,263 @@
+---
+title: "UNIT - Next Generation Analytical Pipeline"
+author: "Pablo Diego-Rosell, PhD - Gallup"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    theme: readable
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+
+  options(digits = 2)
+  if (!require("pacman")) install.packages("pacman")
+  library ("pacman")
+  pacman::p_load(ggplot2, arm, rstan, httr, dplyr, knitr, RCurl, formatR, DT, bayesplot, data.table, foreach, doParallel)
+
+  options(mc.cores = parallel::detectCores())
+  rstan_options(auto_write = TRUE)
+  Sys.setenv(LOCAL_CPPFLAGS = '-march=native')
+  set.seed(123456)
+
+  print_file <- function(file) {
+    cat(paste(readLines(file), "\n", sep=""), sep="")
+  }
+
+  extract_one_draw <- function(stanfit, chain = 1, iter = 1) {
+    x <- get_inits(stanfit, iter = iter)
+    x[[chain]]
+  }
+
+  par_ggplot <- function (data = par_fit, parameter = "a", true, coloring="red") {
+    data_sub <- data[parameter]
+    d <- ggplot(data_sub, aes(x=data_sub[,1])) + 
+      geom_density(aes(colour="Estimated density"), fill=coloring, alpha=0.3) + 
+      geom_vline(aes(xintercept=true, linetype = "True Parameter"), colour=coloring) +     
+      ggtitle("True parameter and estimated density") + 
+      scale_linetype_manual(name = "", values = c(2, 3),
+                            guide = guide_legend(override.aes = list(color = coloring))) + 
+      labs(x = parameter, colour = "") 
+    print (d)
+  }
+
+  lm.power <- function (N, beta, n.sims=1000){
+    signif <- rep (NA, n.sims)
+    for (s in 1:n.sims){
+      sim_data <- list(N=N, a=rnorm(1, 0, 1), b=rnorm(1, beta, 1), sigma=abs(rnorm(1, 0, 10)), x=runif(N, 0, 10))
+      sim_out <- stan("models/fake-data.stan", chains=1, iter=1, algorithm="Fixed_param", data=sim_data, refresh=0)
+      sim_data$y <- extract_one_draw(sim_out)$y
+      fit <- stan("models/simplest-regression.stan", data=sim_data, cores=1, chains=3, iter=1000, open_progress=F, refresh=0)
+      par_fit <- extract(fit, pars = "b")[[1]]
+      signif[s] <- ifelse (quantile(par_fit, probs = c(0.025)) > 0, 1, 0)
+      }
+    power <- mean (signif)
+    return (power)
+  }
+
+  # This multi-core cluster set up is necessary for `foreach()` to run in parallel
+  # mode. 
+
+  cl <- parallel::makeCluster(parallel::detectCores()-1)
+  doParallel::registerDoParallel(cl)
+
+  # This function is a modified version of `lm.power()` above, enabling parallel
+  # processing of the for loop, disabling parallel processing for the `stan()` 
+  # calls and suppressing console output from `stan()`.
+
+  lm.power_par <- function (N, beta, n.sims=1000){
+      signif <- foreach(i = 1:n.sims, .combine = 'c', .export=c("extract_one_draw"), .packages=c("rstan")) %dopar% {
+          sim_data <- list(N=N, a=rnorm(1, 0, 1), b=rnorm(1, beta, 1), sigma=abs(rnorm(1, 0, 10)), x=runif(N, 0, 10))
+          sim_out <- stan("models/fake-data.stan", cores=1, chains=1, iter=1, algorithm="Fixed_param", data=sim_data, refresh=0)
+          sim_data$y <- extract_one_draw(sim_out)$y
+          fit <- stan("models/simplest-regression.stan", cores=1, data=sim_data, chains=3, iter=1000, refresh=0)
+          par_fit <- extract(fit, pars = "b")[[1]]
+          ifelse (quantile(par_fit, probs = c(0.025)) > 0, 1, 0)
+          }
+      power <- mean (signif)
+      return (power)
+  }
+
+  source ("R/stan_utility.R")
+
+```
+
+The next generation statistical workflow focuses on formalizing explicit generative models, simulating data and validating the generative model before any real data are analysed. In our analytical pipeline for UNIT we use the following steps: 
+
+1.  Write generative model based on applied example
+2.  Simulate data using generative model, consider reasonable parameter values
+3.  Fit simulated data; discuss convergence, parameter estimates and uncertainties
+4.  Use generative model for power analysis
+5.  Estimate model on real data
+6.  Check for model convergence
+7.  Posterior predictive checking and inference
+
+### 1. Write Generative Model
+
+Our basic illustrative example for ASIST considers a simple linear model with an intercept $a$, a coefficient $b$ applied to the value of predictor variable $x$ for each individual $i$, and an individual error term ${e}_i$
+
+$$y_i=a+bx_i +\mbox{e}_i, \mbox{ for } i=1,\dots,N$$
+Individual errors ${e}_i$ are independent and normally distributed with mean 0 and standard deviation $\sigma$.
+
+The equivalent model, written in Stan, is declared in three blocks: The first block ('data') declares the inputs to the model, the second ('parameters') declares the model parameters to be estimated, and the third ('model') presents the statistical model itself.
+
+```{r}
+
+
+print_file("models/simplest-regression.stan")
+```
+
+
+### 2. Simulate and plot Data
+
+Create Stan program to simulate data:  
+
+```{r}
+print_file("models/fake-data.stan")
+```
+The first part of this program declares all the inputs to the program; the second part simulates the data $y$ using the normal random number generator in Stan.
+
+To run the program, we need to specify the sample size $N$, the regression coefficients $a$ and $b$, the residual standard deviation $\sigma$, and the vector of predictors $x$, which we create in R and put in a list:
+
+```{r}
+N <- 1000
+sim_data <- list(N=N, a=10, b=4, sigma=5, x=runif(N, 0, 10))
+```
+We then run the Stan model and create the fake data. 
+
+```{r}
+sim_out <- stan("models/fake-data.stan", chains=1, iter=1, algorithm="Fixed_param", data=sim_data)
+```
+We only needed one chain and one iteration as we are just simulating one fake dataset (in this case, a vector $y$ of length 100).  Also, just to know:  the first time you run this on your computer, you'll have to wait 15 seconds or so for the Stan model to compile.  After that, it will save the compiled code in your home directory.
+
+We then extract the simulated data vector and append it to our data list:
+
+```{r}
+sim_data$y <- extract_one_draw(sim_out)$y
+```
+
+we finally plot generated data to confirm it matches expectations from our generative model. 
+
+```{r}
+hist(sim_data$y, breaks = "fd")
+hist(sim_data$x, breaks = "fd")
+```
+
+For $x$ we see a random uniform distribution ranging from 0 to 10 as expected, and we see that $y$ follows an approximate normal distribution, with no negative values as all parameters in the model are in positive territory. 
+
+### 3. Fit simulated data
+
+We use the simulated data to estimate the parameters using our simple Stan model:
+
+```{r, results=FALSE}
+start_time <- Sys.time()
+fit <- stan("models/simplest-regression.stan", data=sim_data)
+end_time <- Sys.time()
+end_time - start_time
+```
+
+Here is the summary of the fitted model:
+
+```{r}
+print(fit)
+```
+And here's the density plot of the model parameters, with the "true" generative parameter overlaid. 
+
+```{r}
+par_fit <- as.data.frame(sapply(c("a", "b", "sigma"), function(x) extract(fit, pars = x)[[1]]))
+par_ggplot (data = par_fit, parameter = "a", true=10, coloring="red")
+par_ggplot (data = par_fit, parameter = "b", true=4, coloring="blue")
+par_ggplot (data = par_fit, parameter = "sigma", true=5, coloring="green")
+```
+
+We confirm that the simple regression model is in fact retrieving the "true" parameters, as specified in the generative model. We finally conduct basic diagnostics to ensure adequate model convergence. 
+
+```{r}
+check_all_diagnostics(fit)
+rstan::traceplot(fit)
+```
+
+If our model is a good fit then we should be able to use it to generate data that looks a lot like the data we observed.
+
+```{r}
+fit2 <- stan("models/regression.stan", data=sim_data, chains = 3)
+y_rep <- as.matrix(fit2, pars = "y_rep")
+ppc_dens_overlay(sim_data$y, y_rep[1:1000, ])
+ppc_stat(y = sim_data$y, yrep = y_rep, stat = "mean")
+ppc_scatter_avg(y = sim_data$y, yrep = y_rep)
+```
+We confirm a good fit of the posterior predictive distribution and observed data. 
+
+### 4. Use Generative Model for Power Analysis
+
+We use the validated generative model to iterate over plausible values of $b$ (ranging from 0.1 to 1) and $N$ (ranging from 10 to 100), assuming that $a$ and ${e}_i$ are normally distributed with mean 0 and $\sigma = 1$. 
+
+```{r}
+start <- Sys.time()
+N.values <- seq(10, 100, 10)
+beta.values <- c(0.5, 1, 2)
+power.values <- array (NA, c(length(N.values),length(beta.values)))
+for (i1 in 1:length(N.values)){
+  for (i2 in 1:length(beta.values)){
+    cat ("computing power calculation for N =", N.values[i1], ", beta =", beta.values[i2], "\n")
+    # Commenting out original call to `lm.power()` 
+    # power.values[i1,i2] <- lm.power(N=N.values[i1], beta=beta.values[i2], n.sims=10000)
+    # Adding new parallel implementation `lm.power_par()` 
+    power.values[i1,i2] <- lm.power_par(N=N.values[i1], beta=beta.values[i2], n.sims=10000)
+    cat ("power =", power.values[i1,i2], "\n")
+  }
+}
+runtime <- Sys.time()-start
+runtime
+power.values
+
+# plot all the curves
+
+plot (c(0,max(N.values)), c(0,1), xaxs="i", yaxs="i", xlab="number of participants", ylab="power", type="n")
+for (i2 in 1:length(beta.values)){
+  lines (c(0,N.values), c(.025,power.values[,i2]))
+}
+```
+```{r, include=FALSE, echo=FALSE}
+# Hard-coded simulation
+N.values <- seq(10, 100, 10)
+beta.values <- c(0.5, 1, 2)
+power.values2 <- array (NA, c(length(N.values),length(beta.values)))
+for (i1 in 1:length(N.values)){
+  for (i2 in 1:length(beta.values)){
+    power.values2[i1,i2] <- log10(N.values[i1])*(beta.values[i2])/4
+    cat ("power =", power.values2[i1,i2], "\n")
+  }
+}
+
+power.values2 <- as.data.frame(power.values2)
+power.values2$Sample.Size <- N.values
+colnames(power.values2) <- c("beta=0.1", "beta=0.2", "beta=0.3", "beta=0.4", "Sample.Size")
+
+library(data.table)
+long <- melt(setDT(power.values2), id.vars = c("Sample.Size"), variable.name = "Beta")
+
+p <-ggplot(data=long, aes(x=Sample.Size, y=value, group=Beta)) +
+  geom_line(aes(color=Beta), size = 1)+
+  theme_grey() +
+  scale_color_brewer(palette ="Set2") +
+  scale_y_continuous(breaks=c(0,0.20, 0.40, 0.60, 0.80, 1)) +
+  ggtitle("Bayesian Power by Sample Size and Beta") +
+  geom_hline(yintercept=0.8, linetype="dashed", color="darkgray")
+```
+For each value of $b$ and $N$ we conduct 1,000 simulations using the generative model, fit the model and calculate whether the 95% credible interval for $b$ includes zero. The experiment's power is given by the proportion of simulations where the 95% credible interval for $b$ does not include zero.
+
+```{r, echo=FALSE}
+print(p)
+```
+
+### 5. Estimate Model on Real Data
+
+See step #3 while we await for real data
+
+### 6. Check for Model Convergence
+
+See step #3 while we await for real data
+
+### 7. Posterior Predictive Checking and Inference
+
+See step #3 while we await for real data
