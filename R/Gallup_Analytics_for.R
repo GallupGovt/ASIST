@@ -94,13 +94,13 @@ ppc_scatter_avg(y = sim_data$y, yrep = y_rep)
 
 ### 4. Use Generative Model for Power Analysis
 
-N.values <- 50
-beta.values <- 1
+N.values <- seq(10, 100, 10)
+beta.values <- c(0.5, 1, 2)
 power.values <- array (NA, c(length(N.values),length(beta.values)))
 for (i1 in 1:length(N.values)){
   for (i2 in 1:length(beta.values)){
     cat ("computing power calculation for N =", N.values[i1], ", beta =", beta.values[i2], "\n")
-    power.values[i1,i2] <- lm.power (N=N.values[i1], beta=beta.values[i2], n.sims=10)
+    power.values[i1,i2] <- lm.power (N=N.values[i1], beta=beta.values[i2], n.sims=10000)
     cat ("power =", power.values[i1,i2], "\n")
   }
 }
