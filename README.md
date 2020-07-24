@@ -10,5 +10,5 @@ Python is the primary data processing language used on UNIT. This repository con
 ## R
 R is the primary data analysis language used on UNIT. This repository contains all the analytic scripts used to analyze data coming from the ASIST performers.
 
-## Stan
+## models
 Stan is the primary modelling tool used on UNIT. This repository contains all the stan models used to test hypotheses for ASIST. 
