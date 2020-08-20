@@ -1,0 +1,1093 @@
+{
+  "id": "falcon_v0.5",
+  "name": "Falcon",
+  "areas": [
+    {
+      "id": "ms",
+      "name": "Mission Start",
+      "type": "room",
+      "x1": -2152,
+      "y1": 146,
+      "x2": -2149,
+      "y2": 149
+    },
+    {
+      "id": "me",
+      "name": "Mission End",
+      "type": "room",
+      "x1": -2160,
+      "y1": 146,
+      "x2": -2157,
+      "y2": 149
+    },
+    {
+      "id": "ew",
+      "name": "Entrance Walkway",
+      "type": "walkway",
+      "x1": -2126,
+      "y1": 144,
+      "x2": -2096,
+      "y2": 149
+    },
+    {
+      "id": "fy1",
+      "name": "Front Yard",
+      "type": "yard",
+      "x1": -2126,
+      "y1": 149,
+      "x2": -2106,
+      "y2": 178
+    },
+    {
+      "id": "fy2",
+      "name": "Front Yard",
+      "type": "yard",
+      "x1": -2126,
+      "y1": 178,
+      "x2": -2109,
+      "y2": 192
+    },
+    {
+      "id": "el",
+      "name": "Entrance Lobby",
+      "type": "hallway",
+      "x1": -2095,
+      "y1": 144,
+      "x2": -2089,
+      "y2": 150
+    },
+    {
+      "id": "lh1",
+      "name": "Left Hallway",
+      "type": "hallway",
+      "x1": -2095,
+      "y1": 151,
+      "x2": -2089,
+      "y2": 156
+    },
+    {
+      "id": "lh2",
+      "name": "Left Hallway",
+      "type": "hallway",
+      "x1": -2089,
+      "y1": 152,
+      "x2": -2037,
+      "y2": 156
+    },
+    {
+      "id": "rh",
+      "name": "Right Hallway",
+      "type": "hallway",
+      "x1": -2108,
+      "y1": 179,
+      "x2": -2028,
+      "y2": 183
+    },
+    {
+      "id": "chb",
+      "name": "Center Hallway Bottom",
+      "type": "hallway",
+      "x1": -2077,
+      "y1": 156,
+      "x2": -2073,
+      "y2": 179
+    },
+    {
+      "id": "chm",
+      "name": "Center Hallway Middle",
+      "type": "hallway",
+      "x1": -2055,
+      "y1": 156,
+      "x2": -2051,
+      "y2": 179
+    },
+    {
+      "id": "cht",
+      "name": "Center Hallway Top",
+      "type": "hallway",
+      "x1": -2041,
+      "y1": 156,
+      "x2": -2037,
+      "y2": 179
+    },
+    {
+      "id": "so",
+      "name": "Secruity Office",
+      "type": "room",
+      "x1": -2088,
+      "y1": 144,
+      "x2": -2085,
+      "y2": 151
+    },
+    {
+      "id": "br",
+      "name": "Open Break Room",
+      "type": "room",
+      "x1": -2084,
+      "y1": 144,
+      "x2": -2076,
+      "y2": 151
+    },
+    {
+      "id": "es1",
+      "name": "Executive Suite 1",
+      "type": "room",
+      "x1": -2075,
+      "y1": 144,
+      "x2": -2059,
+      "y2": 151
+    },
+    {
+      "id": "cf",
+      "name": "The Computer Farm",
+      "type": "room",
+      "x1": -2095,
+      "y1": 157,
+      "x2": -2078,
+      "y2": 178
+    },
+    {
+      "id": "jc",
+      "name": "Janitor",
+      "type": "room",
+      "x1": -2071,
+      "y1": 157,
+      "x2": -2066,
+      "y2": 160
+    },
+    {
+      "id": "es2",
+      "name": "Executive Suite 2",
+      "type": "room",
+      "x1": -2058,
+      "y1": 144,
+      "x2": -2044,
+      "y2": 151
+    },
+    {
+      "id": "kcoe",
+      "name": "King Chris's Office",
+      "type": "room",
+      "x1": -2043,
+      "y1": 144,
+      "x2": -2040,
+      "y2": 151
+    },
+    {
+      "id": "kco2",
+      "name": "King Chris's Office",
+      "type": "room",
+      "x1": -2036,
+      "y1": 144,
+      "x2": -2028,
+      "y2": 159
+    },
+    {
+      "id": "kco1",
+      "name": "King Chris's Office",
+      "type": "room",
+      "x1": -2040,
+      "y1": 144,
+      "x2": -2036,
+      "y2": 151
+    },
+    {
+      "id": "tkt",
+      "name": "The King's Terrace",
+      "type": "balcony",
+      "x1": -2027,
+      "y1": 144,
+      "x2": -2020,
+      "y2": 159
+    },
+    {
+      "id": "hcr",
+      "name": "Herbalife Conference Room",
+      "type": "room",
+      "x1": -2050,
+      "y1": 157,
+      "x2": -2042,
+      "y2": 178
+    },
+    {
+      "id": "r101",
+      "name": "Room 101",
+      "type": "room",
+      "x1": -2036,
+      "y1": 161,
+      "x2": -2028,
+      "y2": 169
+    },
+    {
+      "id": "r102",
+      "name": "Room 102",
+      "type": "room",
+      "x1": -2036,
+      "y1": 170,
+      "x2": -2028,
+      "y2": 178
+    },
+    {
+      "id": "r103",
+      "name": "Room 103",
+      "type": "room",
+      "x1": -2036,
+      "y1": 184,
+      "x2": -2028,
+      "y2": 192
+    },
+    {
+      "id": "r104",
+      "name": "Room 104",
+      "type": "room",
+      "x1": -2045,
+      "y1": 184,
+      "x2": -2037,
+      "y2": 192
+    },
+    {
+      "id": "r105",
+      "name": "Room 105",
+      "type": "room",
+      "x1": -2054,
+      "y1": 184,
+      "x2": -2046,
+      "y2": 192
+    },
+    {
+      "id": "r106",
+      "name": "Room 106",
+      "type": "room",
+      "x1": -2063,
+      "y1": 184,
+      "x2": -2055,
+      "y2": 192
+    },
+    {
+      "id": "r107",
+      "name": "Room 107",
+      "type": "room",
+      "x1": -2072,
+      "y1": 184,
+      "x2": -2064,
+      "y2": 192
+    },
+    {
+      "id": "r108",
+      "name": "Room 108",
+      "type": "room",
+      "x1": -2081,
+      "y1": 184,
+      "x2": -2073,
+      "y2": 192
+    },
+    {
+      "id": "r109",
+      "name": "Room 109",
+      "type": "room",
+      "x1": -2090,
+      "y1": 184,
+      "x2": -2082,
+      "y2": 192
+    },
+    {
+      "id": "r110",
+      "name": "Room 110",
+      "type": "room",
+      "x1": -2099,
+      "y1": 184,
+      "x2": -2091,
+      "y2": 192
+    },
+    {
+      "id": "r111",
+      "name": "Room 111",
+      "type": "room",
+      "x1": -2108,
+      "y1": 184,
+      "x2": -2100,
+      "y2": 192
+    },
+    {
+      "id": "wb",
+      "name": "Women's Room",
+      "type": "bathroom",
+      "x1": -2072,
+      "y1": 170,
+      "x2": -2066,
+      "y2": 178
+    },
+    {
+      "id": "mb",
+      "name": "Men's Room",
+      "type": "bathroom",
+      "x1": -2072,
+      "y1": 161,
+      "x2": -2066,
+      "y2": 169
+    },
+    {
+      "id": "acr",
+      "name": "Amway Conference Room",
+      "type": "room",
+      "x1": -2064,
+      "y1": 157,
+      "x2": -2056,
+      "y2": 167
+    },
+    {
+      "id": "mkcr",
+      "name": "Mary Kay Conference Room",
+      "type": "room",
+      "x1": -2064,
+      "y1": 168,
+      "x2": -2056,
+      "y2": 178
+    }
+  ],
+  "connections": [
+    {
+      "id": "c1",
+      "name": "Opening between the Left Hallway and the Break Room",
+      "type": "opening",
+      "x": -2082,
+      "y": 151,
+      "x2": -2078,
+      "y2": 152,
+      "area_1": "lh2",
+      "area_2": "br"
+    },
+    {
+      "id": "c2",
+      "name": "Door to Executive Suite 1",
+      "type": "door",
+      "x": -2075,
+      "y": 151,
+      "x2": -2074,
+      "y2": 152,
+      "area_1": "lh2",
+      "area_2": "es1"
+    },
+    {
+      "id": "c3",
+      "name": "Door to the Security Office",
+      "type": "door",
+      "x": -2087,
+      "y": 151,
+      "x2": -2086,
+      "y2": 152,
+      "area_1": "lh2",
+      "area_2": "so"
+    },
+    {
+      "id": "c4",
+      "name": "Opening A between the Entrance and the Left Hallway",
+      "type": "opening",
+      "x": -2094,
+      "y": 150,
+      "x2": -2093,
+      "y2": 151,
+      "area_1": "el",
+      "area_2": "lh1"
+    },
+    {
+      "id": "c5",
+      "name": "Opening B between the Entrance and the Left Hallway",
+      "type": "opening",
+      "x": -2092,
+      "y": 150,
+      "x2": -2091,
+      "y2": 151,
+      "area_1": "el",
+      "area_2": "lh1"
+    },
+    {
+      "id": "c6",
+      "name": "Opening C between the Entrance and the Left Hallway",
+      "type": "opening",
+      "x": -2090,
+      "y": 150,
+      "x2": -2089,
+      "y2": 151,
+      "area_1": "el",
+      "area_2": "lh1"
+    },
+    {
+      "id": "c7",
+      "name": "Door to the Computer Farm from the Left Hallway",
+      "type": "door",
+      "x": -2087,
+      "y": 156,
+      "x2": -2086,
+      "y2": 157,
+      "area_1": "lh2",
+      "area_2": "cf"
+    },
+    {
+      "id": "c8",
+      "name": "Door to the Computer Farm from the Right Hallway",
+      "type": "door",
+      "x": -2087,
+      "y": 178,
+      "x2": -2086,
+      "y2": 179,
+      "area_1": "rh",
+      "area_2": "cf"
+    },
+    {
+      "id": "c9",
+      "name": "Door to the Janitor's Closet",
+      "type": "door",
+      "x": -2071,
+      "y": 156,
+      "x2": -2070,
+      "y2": 157,
+      "area_1": "lh2",
+      "area_2": "jc"
+    },
+    {
+      "id": "c10",
+      "name": "Door to Executive Suite 2",
+      "type": "door",
+      "x": -2058,
+      "y": 151,
+      "x2": -2057,
+      "y2": 152,
+      "area_1": "lh2",
+      "area_2": "es2"
+    },
+    {
+      "id": "c11",
+      "name": "Door from to the Terrace from King Chris's Office",
+      "type": "door",
+      "x": -2028,
+      "y": 151,
+      "x2": -2027,
+      "y2": 152,
+      "area_1": "kco2",
+      "area_2": "tkt"
+    },
+    {
+      "id": "c12",
+      "name": "Extension of King Chris's Office",
+      "type": "extension",
+      "x": -2037,
+      "y": 144,
+      "x2": -2036,
+      "y2": 151,
+      "area_1": "kco1",
+      "area_2": "kco2"
+    },
+    {
+      "id": "c13",
+      "name": "Extension of King Chris's Office",
+      "type": "extension",
+      "x": -2040,
+      "y": 144,
+      "x2": -2039,
+      "y2": 147,
+      "area_1": "kco1",
+      "area_2": "kcoe"
+    },
+    {
+      "id": "c14",
+      "name": "Door to King Chris's Office",
+      "type": "double_door",
+      "x": -2043,
+      "y": 151,
+      "x2": -2041,
+      "y2": 152,
+      "area_1": "lh2",
+      "area_2": "kcoe"
+    },
+    {
+      "id": "c15",
+      "name": "Middle Hallway Door to the Herbalife Conference Room",
+      "type": "double_door",
+      "x": -2051,
+      "y": 175,
+      "x2": -2050,
+      "y2": 177,
+      "area_1": "chm",
+      "area_2": "hcr"
+    },
+    {
+      "id": "c16",
+      "name": "Top Hallway Door to the Herbalife Conference Room",
+      "type": "double_door",
+      "x": -2042,
+      "y": 158,
+      "x2": -2041,
+      "y2": 160,
+      "area_1": "cht",
+      "area_2": "hcr"
+    },
+    {
+      "id": "c17",
+      "name": "Door to Room 101",
+      "type": "door",
+      "x": -2037,
+      "y": 168,
+      "x2": -2036,
+      "y2": 169,
+      "area_1": "cht",
+      "area_2": "r101"
+    },
+    {
+      "id": "c18",
+      "name": "Door to Room 102",
+      "type": "door",
+      "x": -2036,
+      "y": 178,
+      "x2": -2035,
+      "y2": 179,
+      "area_1": "rh",
+      "area_2": "r102"
+    },
+    {
+      "id": "c19",
+      "name": "Door to Room 103",
+      "type": "door",
+      "x": -2036,
+      "y": 183,
+      "x2": -2035,
+      "y2": 184,
+      "area_1": "rh",
+      "area_2": "r103"
+    },
+    {
+      "id": "c20",
+      "name": "Door to Room 104",
+      "type": "door",
+      "x": -2045,
+      "y": 183,
+      "x2": -2044,
+      "y2": 184,
+      "area_1": "rh",
+      "area_2": "r104"
+    },
+    {
+      "id": "c21",
+      "name": "Door to Room 105",
+      "type": "door",
+      "x": -2054,
+      "y": 183,
+      "x2": -2053,
+      "y2": 184,
+      "area_1": "rh",
+      "area_2": "r105"
+    },
+    {
+      "id": "c22",
+      "name": "Door to Room 106",
+      "type": "door",
+      "x": -2063,
+      "y": 183,
+      "x2": -2062,
+      "y2": 184,
+      "area_1": "rh",
+      "area_2": "r106"
+    },
+    {
+      "id": "c23",
+      "name": "Door to Room 107",
+      "type": "door",
+      "x": -2072,
+      "y": 183,
+      "x2": -2071,
+      "y2": 184,
+      "area_1": "rh",
+      "area_2": "r107"
+    },
+    {
+      "id": "c24",
+      "name": "Door to Room 108",
+      "type": "door",
+      "x": -2081,
+      "y": 183,
+      "x2": -2080,
+      "y2": 184,
+      "area_1": "rh",
+      "area_2": "r108"
+    },
+    {
+      "id": "c25",
+      "name": "Door to Room 109",
+      "type": "door",
+      "x": -2090,
+      "y": 183,
+      "x2": -2089,
+      "y2": 184,
+      "area_1": "rh",
+      "area_2": "r109"
+    },
+    {
+      "id": "c26",
+      "name": "Door to Room 110",
+      "type": "door",
+      "x": -2099,
+      "y": 183,
+      "x2": -2098,
+      "y2": 184,
+      "area_1": "rh",
+      "area_2": "r110"
+    },
+    {
+      "id": "c27",
+      "name": "Door to Room 111",
+      "type": "door",
+      "x": -2108,
+      "y": 183,
+      "x2": -2107,
+      "y2": 184,
+      "area_1": "rh",
+      "area_2": "r111"
+    },
+    {
+      "id": "c28",
+      "name": "Door to Women's Room",
+      "type": "door",
+      "x": -2073,
+      "y": 170,
+      "x2": -2072,
+      "y2": 171,
+      "area_1": "chb",
+      "area_2": "wb"
+    },
+    {
+      "id": "c29",
+      "name": "Door to Men's Room",
+      "type": "door",
+      "x": -2073,
+      "y": 161,
+      "x2": -2072,
+      "y2": 162,
+      "area_1": "chb",
+      "area_2": "mb"
+    },
+    {
+      "id": "c30",
+      "name": "Door to Amway Conference Room",
+      "type": "double_door",
+      "x": -2056,
+      "y": 165,
+      "x2": -2055,
+      "y2": 167,
+      "area_1": "chm",
+      "area_2": "acr"
+    },
+    {
+      "id": "c31",
+      "name": "Door to Mary Kay Conference Room",
+      "type": "double_door",
+      "x": -2056,
+      "y": 168,
+      "x2": -2055,
+      "y2": 170,
+      "area_1": "chm",
+      "area_2": "mkcr"
+    },
+    {
+      "id": "c32",
+      "name": "Extension between the Middle and Right Hallways",
+      "type": "extension",
+      "x": -2055,
+      "y": 178,
+      "x2": -2051,
+      "y2": 179,
+      "area_1": "chm",
+      "area_2": "rh"
+    },
+    {
+      "id": "c33",
+      "name": "Extension between the Top and Right Hallways",
+      "type": "extension",
+      "x": -2041,
+      "y": 178,
+      "x2": -2037,
+      "y2": 179,
+      "area_1": "cht",
+      "area_2": "rh"
+    },
+    {
+      "id": "c34",
+      "name": "Extension between the Top and Left Hallways",
+      "type": "extension",
+      "x": -2041,
+      "y": 156,
+      "x2": -2037,
+      "y2": 157,
+      "area_1": "cht",
+      "area_2": "lh2"
+    },
+    {
+      "id": "c35",
+      "name": "Extension between the Middle and Left Hallways",
+      "type": "extension",
+      "x": -2055,
+      "y": 156,
+      "x2": -2051,
+      "y2": 157,
+      "area_1": "chm",
+      "area_2": "lh2"
+    },
+    {
+      "id": "c36",
+      "name": "Extension between the Bottom and Left Hallways",
+      "type": "extension",
+      "x": -2077,
+      "y": 156,
+      "x2": -2073,
+      "y2": 157,
+      "area_1": "chb",
+      "area_2": "lh2"
+    },
+    {
+      "id": "c37",
+      "name": "Extension between the Bottom and Right Hallways",
+      "type": "extension",
+      "x": -2077,
+      "y": 178,
+      "x2": -2073,
+      "y2": 179,
+      "area_1": "chb",
+      "area_2": "rh"
+    },
+    {
+      "id": "c38",
+      "name": "Extension Connecting the lower and upper Left Hallway areas",
+      "type": "extension",
+      "x": -2089,
+      "y": 152,
+      "x2": -2088,
+      "y2": 156,
+      "area_1": "lh2",
+      "area_2": "lh1"
+    },
+    {
+      "id": "c39",
+      "name": "Entrance Door A",
+      "type": "double_door",
+      "x": -2096,
+      "y": 147,
+      "x2": -2095,
+      "y2": 149,
+      "area_1": "ew",
+      "area_2": "el"
+    },
+    {
+      "id": "c40",
+      "name": "Entrance Door B",
+      "type": "double_door",
+      "x": -2096,
+      "y": 144,
+      "x2": -2095,
+      "y2": 146,
+      "area_1": "ew",
+      "area_2": "el"
+    },
+    {
+      "id": "c41",
+      "name": "Connection between the Walkway and the Yard",
+      "type": "extension",
+      "x": -2126,
+      "y": 149,
+      "x2": -2106,
+      "y2": 150,
+      "area_1": "fy1",
+      "area_2": "ew"
+    },
+    {
+      "id": "c42",
+      "name": "Extension of the Yard",
+      "type": "extension",
+      "x": -2126,
+      "y": 178,
+      "x2": -2110,
+      "y2": 179,
+      "area_1": "fy2",
+      "area_2": "fy1"
+    }
+  ],
+  "locations": [
+    {
+      "id": "l1",
+      "area_id": "so",
+      "x": -2086.5,
+      "y": 144.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l2",
+      "area_id": "br",
+      "x": -2083.5,
+      "y": 145.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l3",
+      "area_id": "br",
+      "x": -2076.5,
+      "y": 150.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l4",
+      "area_id": "cf",
+      "x": -2092.5,
+      "y": 168.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l5",
+      "area_id": "cf",
+      "x": -2080.5,
+      "y": 160.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l6",
+      "area_id": "cf",
+      "x": -2080.5,
+      "y": 174.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l7",
+      "area_id": "es2",
+      "x": -2052.5,
+      "y": 147.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l8",
+      "area_id": "tkt",
+      "x": -2024.5,
+      "y": 146.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l9",
+      "area_id": "hcr",
+      "x": -2048.5,
+      "y": 158.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l10",
+      "area_id": "hcr",
+      "x": -2048.5,
+      "y": 163.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l11",
+      "area_id": "hcr",
+      "x": -2048.5,
+      "y": 169.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l12",
+      "area_id": "hcr",
+      "x": -2043.5,
+      "y": 176.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l13",
+      "area_id": "mkcr",
+      "x": -2063.5,
+      "y": 177.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l14",
+      "area_id": "acr",
+      "x": -2057.5,
+      "y": 160.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l15",
+      "area_id": "acr",
+      "x": -2062.5,
+      "y": 160.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l16",
+      "area_id": "acr",
+      "x": -2063.5,
+      "y": 166.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l17",
+      "area_id": "r102",
+      "x": -2028.5,
+      "y": 176.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l18",
+      "area_id": "r102",
+      "x": -2031.5,
+      "y": 176.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l19",
+      "area_id": "r102",
+      "x": -2028.5,
+      "y": 170.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l20",
+      "area_id": "r104",
+      "x": -2038.5,
+      "y": 190.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l21",
+      "area_id": "r105",
+      "x": -2046.5,
+      "y": 186.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l22",
+      "area_id": "r107",
+      "x": -2067.5,
+      "y": 190.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l23",
+      "area_id": "r107",
+      "x": -2065.5,
+      "y": 190.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l24",
+      "area_id": "r107",
+      "x": -2064.5,
+      "y": 186.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l25",
+      "area_id": "r108",
+      "x": -2073.5,
+      "y": 185.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l26",
+      "area_id": "r108",
+      "x": -2075.5,
+      "y": 191.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l27",
+      "area_id": "r111",
+      "x": -2103.5,
+      "y": 190.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l28",
+      "area_id": "r111",
+      "x": -2100.5,
+      "y": 186.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l29",
+      "area_id": "mb",
+      "x": -2071.5,
+      "y": 163.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l30",
+      "area_id": "mb",
+      "x": -2071.5,
+      "y": 167.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l31",
+      "area_id": "el",
+      "x": -2092.5,
+      "y": 147.5,
+      "victims": {
+        "critical": 1
+      }
+    }
+  ]
+}

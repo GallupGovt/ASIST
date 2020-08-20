@@ -1,0 +1,806 @@
+{
+  "id": "sparky_v0.5",
+  "name": "Sparky",
+  "areas": [
+    {
+      "id": "ms",
+      "name": "Mission Start",
+      "type": "room",
+      "x1": -2189,
+      "y1": 174,
+      "x2": -2182,
+      "y2": 181
+    },
+    {
+      "id": "sr",
+      "name": "Staging Room",
+      "type": "room",
+      "x1": -2167,
+      "y1": 173,
+      "x2": -2153,
+      "y2": 181
+    },
+    {
+      "id": "chl",
+      "name": "Center Hallway Lobby",
+      "type": "hallway",
+      "x1": -2152,
+      "y1": 174,
+      "x2": -2139,
+      "y2": 178
+    },
+    {
+      "id": "chlb",
+      "name": "Center Hallway Lobby",
+      "type": "hallway",
+      "x1": -2149,
+      "y1": 172,
+      "x2": -2142,
+      "y2": 174
+    },
+    {
+      "id": "ch",
+      "name": "Center Hallway",
+      "type": "hallway",
+      "x1": -2140,
+      "y1": 174,
+      "x2": -2108,
+      "y2": 178
+    },
+    {
+      "id": "e2",
+      "name": "Elevator 2",
+      "type": "elevator",
+      "x1": -2149,
+      "y1": 180,
+      "x2": -2147,
+      "y2": 183
+    },
+    {
+      "id": "e1",
+      "name": "Elevator 1",
+      "type": "elevator",
+      "x1": -2146,
+      "y1": 180,
+      "x2": -2144,
+      "y2": 183
+    },
+    {
+      "id": "wb",
+      "name": "Women's Room",
+      "type": "bathroom",
+      "x1": -2150,
+      "y1": 159,
+      "x2": -2146,
+      "y2": 171
+    },
+    {
+      "id": "mb",
+      "name": "Men's Room",
+      "type": "bathroom",
+      "x1": -2145,
+      "y1": 159,
+      "x2": -2141,
+      "y2": 171
+    },
+    {
+      "id": "lh1",
+      "name": "Left Hallway",
+      "type": "hallway",
+      "x1": -2140,
+      "y1": 153,
+      "x2": -2136,
+      "y2": 174
+    },
+    {
+      "id": "lh2",
+      "name": "Left Hallway",
+      "type": "hallway",
+      "x1": -2136,
+      "y1": 153,
+      "x2": -2108,
+      "y2": 157
+    },
+    {
+      "id": "rh1",
+      "name": "Right Hallway",
+      "type": "hallway",
+      "x1": -2140,
+      "y1": 178,
+      "x2": -2136,
+      "y2": 199
+    },
+    {
+      "id": "rh2",
+      "name": "Right Hallway",
+      "type": "hallway",
+      "x1": -2136,
+      "y1": 195,
+      "x2": -2108,
+      "y2": 199
+    },
+    {
+      "id": "jc",
+      "name": "Janitor",
+      "type": "room",
+      "x1": -2135,
+      "y1": 166,
+      "x2": -2133,
+      "y2": 172
+    },
+    {
+      "id": "r201",
+      "name": "Room 201",
+      "type": "room",
+      "x1": -2135,
+      "y1": 158,
+      "x2": -2129,
+      "y2": 165
+    },
+    {
+      "id": "r203",
+      "name": "Room 203",
+      "type": "room",
+      "x1": -2128,
+      "y1": 158,
+      "x2": -2123,
+      "y2": 165
+    },
+    {
+      "id": "r205",
+      "name": "Room 205",
+      "type": "room",
+      "x1": -2122,
+      "y1": 158,
+      "x2": -2117,
+      "y2": 165
+    },
+    {
+      "id": "r207",
+      "name": "Room 207",
+      "type": "room",
+      "x1": -2116,
+      "y1": 158,
+      "x2": -2108,
+      "y2": 165
+    },
+    {
+      "id": "r208",
+      "name": "Room 208",
+      "type": "room",
+      "x1": -2132,
+      "y1": 166,
+      "x2": -2116,
+      "y2": 173
+    },
+    {
+      "id": "r209",
+      "name": "Room 209",
+      "type": "room",
+      "x1": -2135,
+      "y1": 179,
+      "x2": -2130,
+      "y2": 186
+    },
+    {
+      "id": "r210",
+      "name": "Room 210",
+      "type": "room",
+      "x1": -2115,
+      "y1": 166,
+      "x2": -2108,
+      "y2": 173
+    },
+    {
+      "id": "r211",
+      "name": "Room 211",
+      "type": "room",
+      "x1": -2129,
+      "y1": 179,
+      "x2": -2124,
+      "y2": 186
+    },
+    {
+      "id": "r213",
+      "name": "Room 213",
+      "type": "room",
+      "x1": -2123,
+      "y1": 180,
+      "x2": -2116,
+      "y2": 186
+    },
+    {
+      "id": "r215",
+      "name": "Room 215",
+      "type": "room",
+      "x1": -2115,
+      "y1": 179,
+      "x2": -2108,
+      "y2": 186
+    },
+    {
+      "id": "r216",
+      "name": "Room 216",
+      "type": "room",
+      "x1": -2135,
+      "y1": 187,
+      "x2": -2123,
+      "y2": 194
+    },
+    {
+      "id": "r218",
+      "name": "Room 218",
+      "type": "room",
+      "x1": -2122,
+      "y1": 187,
+      "x2": -2116,
+      "y2": 194
+    },
+    {
+      "id": "r220",
+      "name": "Room 220",
+      "type": "room",
+      "x1": -2115,
+      "y1": 187,
+      "x2": -2108,
+      "y2": 194
+    }
+  ],
+  "connections": [
+    {
+      "id": "c1",
+      "name": "Door to Staging Room",
+      "type": "double_door",
+      "x": -2153,
+      "y": 175,
+      "x2": -2152,
+      "y2": 177,
+      "area_1": "chl",
+      "area_2": "sr"
+    },
+    {
+      "id": "c2",
+      "name": "Elevator 2 Door",
+      "type": "elevator_door",
+      "x": -2149,
+      "y": 178,
+      "x2": -2148,
+      "y2": 180,
+      "area_1": "chl",
+      "area_2": "e2"
+    },
+    {
+      "id": "c3",
+      "name": "Elevator 1 Door",
+      "type": "elevator_door",
+      "x": -2145,
+      "y": 178,
+      "x2": -2144,
+      "y2": 180,
+      "area_1": "chl",
+      "area_2": "e1"
+    },
+    {
+      "id": "c4",
+      "name": "Entrance to Women's Bathroom",
+      "type": "opening",
+      "x": -2149,
+      "y": 171,
+      "x2": -2148,
+      "y2": 172,
+      "area_1": "chlb",
+      "area_2": "wb"
+    },
+    {
+      "id": "c5",
+      "name": "Entrance to Men's Bathroom",
+      "type": "opening",
+      "x": -2143,
+      "y": 171,
+      "x2": -2142,
+      "y2": 172,
+      "area_1": "chlb",
+      "area_2": "mb"
+    },
+    {
+      "id": "c6",
+      "name": "Extension of Left Hallway",
+      "type": "extension",
+      "x": -2136,
+      "y": 153,
+      "x2": -2135,
+      "y2": 157,
+      "area_1": "lh1",
+      "area_2": "lh2"
+    },
+    {
+      "id": "c7",
+      "name": "Center Hallway Lobby to Bathrooms",
+      "type": "extension",
+      "x": -2149,
+      "y": 173,
+      "x2": -2142,
+      "y2": 174,
+      "area_1": "chl",
+      "area_2": "chlb"
+    },
+    {
+      "id": "c8",
+      "name": "Center Hallway Extension to Lobby",
+      "type": "extension",
+      "x": -2141,
+      "y": 174,
+      "x2": -2140,
+      "y2": 178,
+      "area_1": "ch",
+      "area_2": "chl"
+    },
+    {
+      "id": "c9",
+      "name": "Center Hallway Extension to Left Hallway",
+      "type": "extension",
+      "x": -2140,
+      "y": 173,
+      "x2": -2136,
+      "y2": 174,
+      "area_1": "ch",
+      "area_2": "lh1"
+    },
+    {
+      "id": "c10",
+      "name": "Center Hallway Extension to Right Hallway",
+      "type": "extension",
+      "x": -2140,
+      "y": 178,
+      "x2": -2136,
+      "y2": 179,
+      "area_1": "ch",
+      "area_2": "rh1"
+    },
+    {
+      "id": "c11",
+      "name": "Extension of Right Hallway",
+      "type": "extension",
+      "x": -2136,
+      "y": 195,
+      "x2": -2135,
+      "y2": 199,
+      "area_1": "rh1",
+      "area_2": "rh2"
+    },
+    {
+      "id": "c12",
+      "name": "Janitor's Closet Door",
+      "type": "door",
+      "x": -2136,
+      "y": 170,
+      "x2": -2135,
+      "y2": 171,
+      "area_1": "lh1",
+      "area_2": "jc"
+    },
+    {
+      "id": "c13",
+      "name": "Door to Room 201",
+      "type": "door",
+      "x": -2136,
+      "y": 162,
+      "x2": -2135,
+      "y2": 163,
+      "area_1": "lh1",
+      "area_2": "r201"
+    },
+    {
+      "id": "c14",
+      "name": "Door to Room 203",
+      "type": "door",
+      "x": -2127,
+      "y": 157,
+      "x2": -2126,
+      "y2": 158,
+      "area_1": "lh2",
+      "area_2": "r203"
+    },
+    {
+      "id": "c15",
+      "name": "Door to Room 205",
+      "type": "door",
+      "x": -2121,
+      "y": 157,
+      "x2": -2120,
+      "y2": 158,
+      "area_1": "lh2",
+      "area_2": "r205"
+    },
+    {
+      "id": "c16",
+      "name": "Opening between Room 207 and 210",
+      "type": "opening",
+      "x": -2113,
+      "y": 165,
+      "x2": -2110,
+      "y2": 166,
+      "area_1": "r207",
+      "area_2": "r210"
+    },
+    {
+      "id": "c17",
+      "name": "Door A to Room 208",
+      "type": "door",
+      "x": -2128,
+      "y": 173,
+      "x2": -2127,
+      "y2": 174,
+      "area_1": "ch",
+      "area_2": "r208"
+    },
+    {
+      "id": "c18",
+      "name": "Door B to Room 208",
+      "type": "door",
+      "x": -2119,
+      "y": 173,
+      "x2": -2118,
+      "y2": 174,
+      "area_1": "ch",
+      "area_2": "r208"
+    },
+    {
+      "id": "c19",
+      "name": "Door to Room 210",
+      "type": "door",
+      "x": -2113,
+      "y": 173,
+      "x2": -2112,
+      "y2": 174,
+      "area_1": "ch",
+      "area_2": "r210"
+    },
+    {
+      "id": "c20",
+      "name": "Door to Room 209",
+      "type": "door",
+      "x": -2132,
+      "y": 178,
+      "x2": -2131,
+      "y2": 179,
+      "area_1": "ch",
+      "area_2": "r209"
+    },
+    {
+      "id": "c21",
+      "name": "Door to Room 211",
+      "type": "door",
+      "x": -2128,
+      "y": 178,
+      "x2": -2127,
+      "y2": 179,
+      "area_1": "ch",
+      "area_2": "r211"
+    },
+    {
+      "id": "c22",
+      "name": "Door between 213 and 218",
+      "type": "door",
+      "x": -2118,
+      "y": 186,
+      "x2": -2117,
+      "y2": 187,
+      "area_1": "r213",
+      "area_2": "r218"
+    },
+    {
+      "id": "c23",
+      "name": "Door between 215 and 220",
+      "type": "door",
+      "x": -2113,
+      "y": 186,
+      "x2": -2112,
+      "y2": 187,
+      "area_1": "r215",
+      "area_2": "r220"
+    },
+    {
+      "id": "c24",
+      "name": "Door to Room 215",
+      "type": "door",
+      "x": -2111,
+      "y": 178,
+      "x2": -2110,
+      "y2": 179,
+      "area_1": "ch",
+      "area_2": "r215"
+    },
+    {
+      "id": "c25",
+      "name": "Door A to Room 216",
+      "type": "door",
+      "x": -2134,
+      "y": 194,
+      "x2": -2133,
+      "y2": 195,
+      "area_1": "rh2",
+      "area_2": "r216"
+    },
+    {
+      "id": "c26",
+      "name": "Door B to Room 216",
+      "type": "door",
+      "x": -2125,
+      "y": 194,
+      "x2": -2124,
+      "y2": 195,
+      "area_1": "rh2",
+      "area_2": "r216"
+    },
+    {
+      "id": "c27",
+      "name": "Door to Room 220",
+      "type": "door",
+      "x": -2113,
+      "y": 194,
+      "x2": -2112,
+      "y2": 195,
+      "area_1": "rh2",
+      "area_2": "r220"
+    },
+    {
+      "id": "c28",
+      "name": "Door to Room 218",
+      "type": "door",
+      "x": -2120,
+      "y": 194,
+      "x2": -2119,
+      "y2": 195,
+      "area_1": "rh2",
+      "area_2": "r218"
+    },
+    {
+      "id": "c29",
+      "name": "Door to Room 207",
+      "type": "door",
+      "x": -2112,
+      "y": 157,
+      "x2": -2111,
+      "y2": 158,
+      "area_1": "lh2",
+      "area_2": "r207"
+    }
+  ],
+  "locations": [
+    {
+      "id": "l1",
+      "area_id": "e2",
+      "x": -2147.5,
+      "y": 180.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l2",
+      "area_id": "e1",
+      "x": -2144.5,
+      "y": 182.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l3",
+      "area_id": "wb",
+      "x": -2147.5,
+      "y": 160.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l4",
+      "area_id": "mb",
+      "x": -2141.5,
+      "y": 165.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l5",
+      "area_id": "mb",
+      "x": -2141.5,
+      "y": 161.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l6",
+      "area_id": "jc",
+      "x": -2134.5,
+      "y": 166.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l7",
+      "area_id": "r201",
+      "x": -2132.5,
+      "y": 164.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l8",
+      "area_id": "r201",
+      "x": -2129.5,
+      "y": 162.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l9",
+      "area_id": "r203",
+      "x": -2123.5,
+      "y": 164.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l10",
+      "area_id": "r207",
+      "x": -2115.5,
+      "y": 160.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l11",
+      "area_id": "r207",
+      "x": -2108.5,
+      "y": 158.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l12",
+      "area_id": "r207",
+      "x": -2109.5,
+      "y": 164.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l13",
+      "area_id": "r210",
+      "x": -2114.5,
+      "y": 166.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l14",
+      "area_id": "r210",
+      "x": -2109.5,
+      "y": 171.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l15",
+      "area_id": "r208",
+      "x": -2117.5,
+      "y": 168.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l16",
+      "area_id": "r208",
+      "x": -2124.5,
+      "y": 171.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l17",
+      "area_id": "r211",
+      "x": -2124.5,
+      "y": 184.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l18",
+      "area_id": "r215",
+      "x": -2114.5,
+      "y": 181.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l19",
+      "area_id": "r215",
+      "x": -2108.5,
+      "y": 185.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l20",
+      "area_id": "r213",
+      "x": -2117.5,
+      "y": 180.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l21",
+      "area_id": "r213",
+      "x": -2119.5,
+      "y": 185.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l22",
+      "area_id": "r216",
+      "x": -2133.5,
+      "y": 192.5,
+      "victims": {
+        "critical": 1
+      }
+    },
+    {
+      "id": "l23",
+      "area_id": "r216",
+      "x": -2123.5,
+      "y": 188.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l24",
+      "area_id": "r218",
+      "x": -2118.5,
+      "y": 187.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l25",
+      "area_id": "r220",
+      "x": -2112.5,
+      "y": 190.5,
+      "victims": {
+        "non_critical": 1
+      }
+    },
+    {
+      "id": "l26",
+      "area_id": "r220",
+      "x": -2109.5,
+      "y": 188.5,
+      "victims": {
+        "non_critical": 1
+      }
+    }
+  ]
+}
