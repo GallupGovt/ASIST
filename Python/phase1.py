@@ -9,7 +9,7 @@ Created on Mon Aug 17 08:58:25 2020
 import json
 import numpy as np
 import pandas as pd
-
+import glob
 
 # main program
 def main():
@@ -21,32 +21,32 @@ def main():
         file_names.append(line.strip())
         
     directory = file_names[0]
-    fname = file_names[1]
-    agent_file = file_names[2]
-    condition_path = file_names[3]
-    survey_path = file_names[4]
-    
-    data = read_raw(directory, fname)
-    temp_df = norm_table(data)
-    subject_id = get_sub_id(temp_df)
-    df = get_table(temp_df)
-    df = set_elapsed_time(df)
-    df = forward_fill_na(df)
-    room_df = get_room_table(df)
-    triage_df = get_triage_table(df)
-    event_df = get_next_victim_is_yellow(room_df, triage_df)
-    new_df = get_distance(event_df)
-    data = read_agent(agent_file)
-    new_loc_df = get_new_loc(data)
-    new_df = calculate_remain_yellow_victims(new_loc_df, new_df)
-    new_df = get_cur_room_victims(new_df, new_loc_df)
-    new_df = next_room_has_yellow_victim(new_df, new_loc_df)
-    condition_df = read_condition(condition_path)
-    new_df = join_condition(condition_df, fname, subject_id, new_df)
-    survey_df = get_survey_table(survey_path)
-    survey_df = map_survey(survey_df)
-    new_df = calculate_join_avg_survey(survey_df, new_df)
-    write_final_csv(new_df, fname)
+    agent_file = file_names[1]
+    condition_path = file_names[2]
+    survey_path = file_names[3]
+    for name in glob.glob(directory+'/*.json'):
+        fname = name.replace(directory, "")
+        data = read_raw(directory, fname)
+        temp_df = norm_table(data)
+        subject_id = get_sub_id(temp_df)
+        df = get_table(temp_df)
+        df = set_elapsed_time(df)
+        df = forward_fill_na(df)
+        room_df = get_room_table(df)
+        triage_df = get_triage_table(df)
+        event_df = get_next_victim_is_yellow(room_df, triage_df)
+        new_df = get_distance(event_df)
+        data = read_agent(agent_file)
+        new_loc_df = get_new_loc(data)
+        new_df = calculate_remain_yellow_victims(new_loc_df, new_df)
+        new_df = get_cur_room_victims(new_df, new_loc_df)
+        new_df = next_room_has_yellow_victim(new_df, new_loc_df)
+        condition_df = read_condition(condition_path)
+        new_df = join_condition(condition_df, fname, subject_id, new_df)
+        survey_df = get_survey_table(survey_path)
+        survey_df = map_survey(survey_df)
+        new_df = calculate_join_avg_survey(survey_df, new_df)
+        write_final_csv(new_df, fname)
 
 # read in the json file 
 def read_raw(directory, fname):
@@ -65,7 +65,7 @@ def get_sub_id(temp_df):
     temp_df['msg_subjects'] = temp_df['msg_subjects'].apply(lambda x: x[0] if x==x else x)
     sub_arr = list(temp_df['msg_subjects'].unique())
     sub_id = [val for val in sub_arr if str(val) != 'nan'][0].lower()
-    subject_id = sub_id[:7]+'_id'+sub_id[7:]
+    subject_id = sub_id[:7]+'_id_'+sub_id[8:]
     return subject_id
 
 # extract the columns that start with data and continue work with them
@@ -172,20 +172,12 @@ def join_condition(condition_df, fname, subject_id, new_df):
 
 # pre-process the survey file
 def get_survey_table(survey_path):
-    survey_df = pd.read_csv(survey_path)    
-    survey_df = survey_df.drop([0, 1]).reset_index(drop=True)    
-    survey_df=survey_df[['Q2', 'Q5_1','Q5_2','Q5_3','Q5_4','Q5_5','Q5_6','Q5_7','Q5_8','Q5_9','Q5_10']]    
-        
-    survey_df['Q5_1'] = survey_df['Q5_1'].apply(lambda x: x[:-4] if len(x)>3 else x)
-    survey_df['Q5_2'] = survey_df['Q5_2'].apply(lambda x: x[:-4] if len(x)>3 else x)
-    survey_df['Q5_3'] = survey_df['Q5_3'].apply(lambda x: x[:-4] if len(x)>3 else x)
-    survey_df['Q5_4'] = survey_df['Q5_4'].apply(lambda x: x[:-4] if len(x)>3 else x)
-    survey_df['Q5_5'] = survey_df['Q5_5'].apply(lambda x: x[:-4] if len(x)>3 else x)
-    survey_df['Q5_6'] = survey_df['Q5_6'].apply(lambda x: x[:-4] if len(x)>3 else x)
-    survey_df['Q5_7'] = survey_df['Q5_7'].apply(lambda x: x[:-4] if len(x)>3 else x)
-    survey_df['Q5_8'] = survey_df['Q5_8'].apply(lambda x: x[:-4] if len(x)>3 else x)
-    survey_df['Q5_9'] = survey_df['Q5_9'].apply(lambda x: x[:-4] if len(x)>3 else x)
-    survey_df['Q5_10'] = survey_df['Q5_10'].apply(lambda x: x[:-4] if len(x)>3 else x)   
+    survey_df = pd.read_excel(survey_path)
+    survey_df = survey_df.drop([0, 1]).reset_index(drop=True)   
+    survey_cols = ['Q2', 'Q5_1','Q5_2','Q5_3','Q5_4','Q5_5','Q5_6','Q5_7','Q5_8','Q5_9','Q5_10']
+    survey_df=survey_df[survey_cols]    
+    for col in survey_cols[1:]:
+        survey_df[col] = survey_df[col].apply(lambda x: x[:-4] if type(x)==str else str(x))  
     return survey_df
 
 # transform the text into value
