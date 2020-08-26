@@ -10,6 +10,9 @@ import json
 import numpy as np
 import pandas as pd
 import glob
+from matplotlib import pyplot as plt
+from matplotlib.patches import Rectangle
+import textwrap
 
 # main program
 def main():
@@ -37,6 +40,9 @@ def main():
         event_df = get_next_victim_is_yellow(room_df, triage_df)
         new_df = get_distance(event_df)
         data = read_agent(agent_file)
+        area_df =get_area(data)
+        connection_df =get_connection(data)
+        location_df =get_location(data)
         new_loc_df = get_new_loc(data)
         new_df = calculate_remain_yellow_victims(new_loc_df, new_df)
         new_df = get_cur_room_victims(new_df, new_loc_df)
@@ -47,6 +53,7 @@ def main():
         survey_df = map_survey(survey_df)
         new_df = calculate_join_avg_survey(survey_df, new_df)
         write_final_csv(new_df, fname)
+        plot_map(fname, area_df, connection_df, location_df, df)
 
 # read in the json file 
 def read_raw(directory, fname):
@@ -64,8 +71,8 @@ def norm_table(data):
 def get_sub_id(temp_df):
     temp_df['msg_subjects'] = temp_df['msg_subjects'].apply(lambda x: x[0] if x==x else x)
     sub_arr = list(temp_df['msg_subjects'].unique())
-    sub_id = [val for val in sub_arr if str(val) != 'nan'][0].lower()
-    subject_id = sub_id[:7]+'_id_'+sub_id[8:]
+    sub_id = [val for val in sub_arr if str(val) != 'nan'][0]
+    subject_id = 'subject_id_'+sub_id[8:]
     return subject_id
 
 # extract the columns that start with data and continue work with them
@@ -121,6 +128,18 @@ def read_agent(agent_file):
     with open(agent_file) as f:
         data = json.loads("[" + f.read() + "]")
     return data
+
+def get_area(data):
+    area_df = pd.json_normalize(data ,"areas")
+    return area_df
+
+def get_connection(data):
+    connection_df = pd.json_normalize(data ,"connections")
+    return connection_df  
+
+def get_location(data):
+    location_df = pd.json_normalize(data ,"locations")
+    return location_df   
 
 # group the victims by room and sum up.
 def get_new_loc(data):
@@ -200,7 +219,36 @@ def write_final_csv(new_df, fname):
                   'time_elapsed_minutes', 'cur_room_yellow_victims', 'cur_room_green_victims', \
                   'next_room_has_yellow_victim', 'condition_between_Ss', 'trial_id']]
     
-    final_df.to_csv(fname[:-5]+'.csv')    
+    final_df.to_csv(fname[:-5] + '.csv') 
+
+def plot_map(fname, area_df, connection_df, location_df, df):
+    critical_df = location_df[location_df['victims.critical']==1.0] 
+    non_critical_df = location_df[location_df['victims.non_critical']==1.0]
+
+    fig,ax = plt.subplots(figsize=(50,20))
+    currentAxis = plt.gca()
+
+    for i in range(len(area_df)):
+        currentAxis.add_patch(Rectangle((area_df['x1'][i], area_df['y1'][i]), \
+                                        area_df['x2'][i]-area_df['x1'][i], area_df['y2'][i]-area_df['y1'][i], \
+                                        fill=False, color='black'))
+        plt.text(area_df['x1'][i]+1, (area_df['y1'][i]+area_df['y2'][i])/2-1, textwrap.fill(area_df['name'][i], 10),fontsize=16)
+
+    for i in range(len(connection_df)):
+        currentAxis.add_patch(Rectangle((connection_df['x'][i], connection_df['y'][i]), \
+                                        connection_df['x2'][i]-connection_df['x'][i],\
+                                        connection_df['y2'][i]-connection_df['y'][i], \
+                                        fill=True, color='white'))
+
+    plt.scatter(critical_df['x'], critical_df['y'], s=200, marker='o', c= 'gold')
+    plt.scatter(non_critical_df['x'], non_critical_df['y'], s=200, marker='^', c= 'green')
+
+    plt.scatter(df['data_x'], df['data_z'], s= 15, marker='.', c= 'coral')
+
+    plt.xlim([-2165, -2015]) 
+    plt.ylim([140, 200])
+    plt.savefig(fname[:-5] + '.jpeg')
+
     
 if __name__ == "__main__":
     main()    
