@@ -17,6 +17,7 @@ import sys
 import re
 import pprint
 from tqdm import tqdm
+import math
 
 # main program
 def main():
@@ -34,20 +35,66 @@ def main():
     survey_path = 'Data/surveys/surveys.csv'
     map_path = 'Data/Locations'
 
-    # Load the semantic maps (room locations)
+    DIFFICULTIES = ('Easy',)
+
+    # Load the semantic maps (room locations). room_to_parent is a mapping
+    # of child room ids to their parent room id. rooms is a dictionary of
+    # room ids to their name, type, children (if any), and x1/x2/z1/z2
+    # coordinates if not a parent.
     map = {}
-    room_parent = {}
-    for d in ('Easy',):
-        room_parent[d] = {}
+    room_to_parent = {}
+    rooms = {}
+    coordinates = {}
+    for d in (DIFFICULTIES):
+        room_to_parent[d] = {}
+        rooms[d] = {}
         with open(map_path + f'/Falcon_v1.0_{d}_sm.json') as f:
             map[d] = json.loads(f.read())
-        # Create a dictionary of child rooms to their parents
         for loc in map[d]['locations']:
+            rooms[d][loc['id']] = {'name': loc['name'], 'type': loc['type']}
             if 'child_locations' in loc:
+                rooms[d][loc['id']]['children'] = loc['child_locations']
                 for x in loc['child_locations']:
-                    room_parent[x] = loc['id']
+                    room_to_parent[d][x] = loc['id']
+            else:
+                rooms[d][loc['id']]['x1'] = loc['bounds']['coordinates'][0]['x']
+                rooms[d][loc['id']]['x2'] = loc['bounds']['coordinates'][1]['x']
+                rooms[d][loc['id']]['z1'] = loc['bounds']['coordinates'][0]['z']
+                rooms[d][loc['id']]['z2'] = loc['bounds']['coordinates'][1]['z']
+        # Create a map of every possible coordinate and what rooms they go to
+        coordinates[d] = {}
+        (low_x, low_z) = (99999,99999)
+        (high_x, high_z) = (-99999,-99999)
+        for id, r in rooms[d].items():
+            if 'x1' in r:
+                if r['x1'] < low_x: low_x = r['x1']
+                if r['x2'] < low_x: low_x = r['x2']
+                if r['x1'] > high_x: high_x = r['x1']
+                if r['x2'] > high_x: high_x = r['x2']
+                if r['z1'] < low_z: low_z = r['z1']
+                if r['z2'] < low_z: low_z = r['z2']
+                if r['z1'] > high_z: high_z = r['z1']
+                if r['z2'] > high_z: high_z = r['z2']
+        for x in range(low_x, high_x + 1):
+            for z in range(low_z, high_z + 1):
+                coordinates[d][(x, z)] = {'x': x, 'z': z, 'rooms': []}
+                for id, r in rooms[d].items():
+                    if 'x1' not in r: continue
+                    if r['x1'] <= x <= r['x2'] and r['z1'] <= z <= r['z2']:
+                        coordinates[d][(x,z)]['rooms'].append(id)
+                        if id in room_to_parent[d]:
+                            coordinates[d][(x,z)]['rooms'].append(room_to_parent[d][id])
 
-    # TODO: Load doorway CSV files and map doorways to rooms (Data/Locations/MapInfo_[diff].csv)
+    # Create a mapping of beep trigger coordinates to room ids
+    for d in (DIFFICULTIES):
+        tdf = pd.read_csv(f'{map_path}/MapInfo_{d}.csv')
+        for i, row in tdf.iterrows():
+            (x, y, z) = row['LocationXYZ'].split()
+            (x, y, z) = (int(x), int(y), int(z))
+            for room_id, room in rooms[d].items():
+                if room['name'] == row['RoomName']:
+                    coordinates[d][(x, z)]['trigger'] = room_id
+
     # Read in the survey data, indexed to the member_id (we hope)
     survey_df = pd.read_csv(survey_path, skiprows=[1,2], index_col='Q4')
     survey_df.replace(-99, np.NaN, inplace=True)
@@ -72,21 +119,31 @@ def main():
         # Figure out which goal column to look at based on the seek number
         # and get that goal
         goal_column = ('Q13', 'Q17', 'Q21')[seek]
-        goal = int(survey_df.at[member_id, goal_column])
-        # # Get the prioritized victim strategy
-        # pvs_column = ('Q209', 'Q218', 'Q227')[seek]
-        # prioritized_victim_strategy = int(survey_df.at[member_id, pvs_column])
-        # print('prioritized_victim_strategy:', prioritized_victim_strategy)
+        goal_code = [int(survey_df.at[member_id, goal_column])-1]
+        goal = ('victims', 'extinguisher', 'tasks', 'points')[goal_code]
 
         # ***ERIK***: Replace this
         victim_strategy = 'Yellow Only'
 
-        # Pull in the raw data from the json file into a dictionary
+        # Pull in the raw data from the json file into a dictionary, keeping
+        # only topic, data, and msg
         print("Loading JSON...")
         with open(directory+fname) as f:
-            data = json.loads("[" + f.read().replace("}\n{", "},\n{") + "]")
+            orig_data = json.loads("[" + f.read().replace("}\n{", "},\n{") + "]")
+        data = []
+        for line in orig_data:
+            # Skip all observation messages from the god character, ASIST3
+            if line['data'].get('name', '') == 'ASIST3':
+                continue
+            data.append({
+                'data': line['data'],
+                'topic': line['topic'],
+                'msg': line['msg']
+            })
 
-        # pprint.pprint(data[5426], indent=2)
+        # pprint.pprint(data[30000], indent=2)
+        # print('------------------')
+        # pprint.pprint(data[30001], indent=2)
         # sys.exit()
 
         # i = 0
@@ -95,13 +152,8 @@ def main():
         #     #     or d['topic'] == 'observations/events/player/beep'
         #     #     or d['topic'] == 'observations/events/player/triage'
         #     #     or 'entered_area_id' in d['data']):
-        #     if d['topic'] == 'ground_truth/mission/victims_list':
+        #     if d['topic'] == 'observations/events/player/beep':
         #         i += 1
-        #         d.pop('message')
-        #         d.pop('header')
-        #         d.pop('host')
-        #         d.pop('@version')
-        #         d.pop('msg')
         #         pprint.pprint(d, indent=2)
         #         print('----------------------')
         # sys.exit()
@@ -111,9 +163,31 @@ def main():
         df = pd.json_normalize(data)
         df.columns = df.columns.map(lambda x: x.replace(".", "_"))
 
-        # Gets only the columns that start with 'data' or 'topic' or 'msg'
-        filter_col = [col for col in df if (col.startswith('data') or col.startswith('topic') or col.startswith('msg'))]
-        df = df[filter_col]
+        # Create ext_trigger for any moment the player steps on a beep trigger
+        print("Creating trigger data...")
+        last_room = None
+        for i, r in df[df['data_x'].notnull()].iterrows():
+            x = r['data_x']
+            z = r['data_z']
+            for c in [
+                (math.floor(x), math.floor(z)),
+                (math.floor(x), math.ceil(z)),
+                (math.ceil(x), math.floor(z)),
+                (math.ceil(x), math.ceil(z))]:
+                if c not in coordinates[complexity]:
+                    continue
+                if 'trigger' in coordinates[complexity][c]:
+                    t = coordinates[complexity][c]['trigger']
+                    if last_room != t:
+                        df.at[i, 'ext_trigger'] = t
+                        last_room = t
+
+        # Creating ext_beeps to indicate number of beeps (1 or 2)
+        for i, r in df[df['data_beep_x'].notnull()].iterrows():
+            if r['data_message'] == 'Beep':
+                df.at[i, 'ext_beeps'] = 1
+            elif r['data_message'] == 'Beep Beep':
+                df.at[i, 'ext_beeps'] = 2
 
         # Creates a victim list where the key is a hash of the x/y/z coordinates.
         # This must be done from the FoV because the x/y/z in the victim_list event
@@ -125,7 +199,7 @@ def main():
                 for b in r['data_blocks']:
                     if not b['type'].startswith('block_victim'): continue
                     (vx, vy, vz) = b['location']
-                    key = f'{vx}:{vy}:{vz}'
+                    key = (vx, vy, vz)
                     if key in victim_list: continue
                     victim_list[key] = {
                         'x': vx, 'y': vy, 'z': vz,
@@ -133,30 +207,30 @@ def main():
                     }
 
         # Determines number of victims per room by color
-        print("Creating room list...")
-        rooms = {'total': {'green': 0, 'yellow': 0, 'type': 0}}
+        print("Creating room_victims list...")
+        room_victims = {'total': {'green': 0, 'yellow': 0, 'type': 0}}
         for v in df['data_mission_victim_list'][df['data_mission_victim_list'].notnull()].values[0]:
             r = v['room_name']
-            if r not in rooms:
-                rooms[r] = {'green': 0, 'yellow': 0, 'type': 0}
+            if r not in room_victims:
+                room_victims[r] = {'green': 0, 'yellow': 0, 'type': 0}
             if v['block_type'] == 'block_victim_1':
-                rooms['total']['green'] += 1
-                rooms[r]['green'] += 1
+                room_victims['total']['green'] += 1
+                room_victims[r]['green'] += 1
             elif v['block_type'] == 'block_victim_2':
-                rooms['total']['yellow'] += 1
-                rooms[r]['yellow'] += 1
+                room_victims['total']['yellow'] += 1
+                room_victims[r]['yellow'] += 1
 
         # Determines the type of each room.
         # 0) no victims, 1) one or more yellow victims,
         # 2) One or more green victims, 3) a mix of green and yellow.
-        for k, v in rooms.items():
+        for k, v in room_victims.items():
             if   v['yellow'] >  0 and v['green'] == 0: v['type'] = 1
             elif v['yellow'] == 0 and v['green'] >  0: v['type'] = 2
             elif v['yellow'] >  0 and v['green'] >  0: v['type'] = 3
 
         # Fills the event rows that have blank values with their values from the previous row
         # cols = ['data_x', 'data_y', 'data_z', 'data_mission_timer', 'data_blocks']
-        print("Setting coordinates and elapsed time...")
+        print("Setting player coordinates and elapsed time...")
         cols = ['data_x', 'data_y', 'data_z', 'data_mission_timer']
         df.loc[:,cols] = df.loc[:,cols].ffill()
 
@@ -189,21 +263,20 @@ def main():
         df['ext_next_victim_y'] = df['data_victim_y'].bfill()
         df['ext_next_victim_z'] = df['data_victim_z'].bfill()
 
-        # Determine the rooms in view at any given moment and put the list
-        # of them into 'ext_rooms_in_view'. Put the victims in view into
+        # Determine the victims in view at any moment and put into
         # 'ext_victims_in_view'.
-        print("Creating rooms and victims in view...")
-        df['ext_rooms_in_view'] = np.NaN
+        print("Creating victims in view...")
+        # df['ext_rooms_in_view'] = np.NaN
         df['ext_victims_in_view'] = np.NaN
-        df['ext_rooms_in_view'] = df['ext_rooms_in_view'].astype('object')
+        # df['ext_rooms_in_view'] = df['ext_rooms_in_view'].astype('object')
         df['ext_victims_in_view'] = df['ext_victims_in_view'].astype('object')
         for i, r in tqdm(df.iterrows()):
             if r['topic'] == 'agent/pygl_fov/player/3d/summary':
-                df.at[i, 'ext_rooms_in_view'] = find_rooms_in_view(
-                    blocks=r['data_blocks'],
-                    diff=complexity,
-                    map=map,
-                    room_parent=room_parent)
+                # df.at[i, 'ext_rooms_in_view'] = find_rooms_in_view(
+                #     blocks=r['data_blocks'],
+                #     diff=complexity,
+                #     map=map,
+                #     room_to_parent=room_to_parent)
                 df.at[i, 'ext_victims_in_view'] = find_victims_in_view(
                     blocks=r['data_blocks'])
 
@@ -262,23 +335,23 @@ def main():
         for i, row in event_df.iterrows():
             r = row['ext_room_name']
             # Does the room have any victims?
-            if r not in rooms:
+            if r not in room_victims:
                 event_df.at[i, 'ext_yellow_victims_in_current_room'] = 0
                 event_df.at[i, 'ext_green_victims_in_current_room'] = 0
                 continue
             # If the row is greater than the expire_index (when all yellows die)
             # then yellow must be zero
             if i >= expire_index:
-                rooms[r]['yellow'] = 0
+                room_victims[r]['yellow'] = 0
             # Else if the triaged victim was yellow, decrease yellows by 1
             elif row['data_color'] == 'Yellow':
-                rooms[r]['yellow'] -= 1
+                room_victims[r]['yellow'] -= 1
             # Else if the triaged victim was green, decrease greens by 1
             if row['data_color'] == 'Green':
-                rooms[r]['green'] -= 1
-            event_df.at[i, 'ext_yellow_victims_in_current_room'] = rooms[r]['yellow']
-            event_df.at[i, 'ext_green_victims_in_current_room'] = rooms[r]['green']
-            event_df.at[i, 'ext_room_type'] = rooms[r]['type']
+                room_victims[r]['green'] -= 1
+            event_df.at[i, 'ext_yellow_victims_in_current_room'] = room_victims[r]['yellow']
+            event_df.at[i, 'ext_green_victims_in_current_room'] = room_victims[r]['green']
+            event_df.at[i, 'ext_room_type'] = room_victims[r]['type']
 
         # Put in Q7 survey responses
         q7_cols = [col for col in survey_df if col.startswith('Q7_')]
@@ -288,6 +361,7 @@ def main():
         event_df['trial_id'] = trial_id
         event_df['complexity'] = complexity
         event_df['training'] = training
+        event_df['ext_goal'] = goal
 
         sys.exit()
 
@@ -333,7 +407,7 @@ def main():
         # plot_map(fname, area_df, connection_df, location_df, df)
 
 
-def find_rooms_in_view(blocks, diff, map, room_parent):
+def find_rooms_in_view(blocks, diff, map, room_to_parent):
     """Find all of the rooms that are in the current FoV"""
     # Make a unique list of room ids
     ids = set()
@@ -354,9 +428,9 @@ def find_rooms_in_view(blocks, diff, map, room_parent):
                     if d == 'locations':
                         # print('Adding room')
                         ids.add(x['id'])
-                        if x['id'] in room_parent:
+                        if x['id'] in room_to_parent[diff]:
                             # print('Adding room parent')
-                            ids.add(room_parent[x['id']])
+                            ids.add(room_to_parent[diff][x['id']])
                     # If it's a connection, get the rooms it is connected to
                     elif d == 'connections':
                         for c in x['connected_locations']:
@@ -370,7 +444,7 @@ def find_victims_in_view(blocks):
     for b in blocks:
         if b['type'].startswith('block_victim'):
             (x, y, z) = b['location']
-            vl.append(f'{x}:{y}:{z}')
+            vl.append((x, y, z))
     return vl
 
 # Get the metadata about the file from the filename and fill in the values into
