@@ -18,6 +18,7 @@ import re
 import pprint
 from tqdm import tqdm
 import math
+import copy
 
 # main program
 def main():
@@ -105,7 +106,6 @@ def main():
 
         # Get the information out of the filename
         (member_id, trial_id, complexity, training) = get_metadata(name)
-
         # ***ERIK***: Replace this once you have real data
         member_id = 23
 
@@ -119,11 +119,13 @@ def main():
         # Figure out which goal column to look at based on the seek number
         # and get that goal
         goal_column = ('Q13', 'Q17', 'Q21')[seek]
-        goal_code = [int(survey_df.at[member_id, goal_column])-1]
-        goal = ('victims', 'extinguisher', 'tasks', 'points')[goal_code]
+        goal_code = int(survey_df.at[member_id, goal_column])-1
+        goal = ['victims', 'extinguisher', 'tasks', 'points'][goal_code]
+        workload_column = ('Q213', 'Q222', 'Q231')[seek]
+        workload = int(survey_df.at[member_id, workload_column])
 
         # ***ERIK***: Replace this
-        victim_strategy = 'Yellow Only'
+        orig_victim_strategy = 'Yellow Only'
 
         # Pull in the raw data from the json file into a dictionary, keeping
         # only topic, data, and msg
@@ -194,7 +196,7 @@ def main():
         # is wrong. Stores x, y, z and color.
         print("Creating victim list...")
         victim_list = {}
-        for i, r in tqdm(df.iterrows()):
+        for i, r in df.iterrows():
             if r['topic'] == 'agent/pygl_fov/player/3d/summary':
                 for b in r['data_blocks']:
                     if not b['type'].startswith('block_victim'): continue
@@ -207,26 +209,36 @@ def main():
                     }
 
         # Determines number of victims per room by color
+        def get_room_id(name):
+            # Correct variances in the naming scheme
+            if name == 'The Computer Farm': name = 'Computer Farm'
+            if name == 'Open Break Area': name = 'Break Room'
+            for key, item in rooms[complexity].items():
+                if item['name'] == name:
+                    return key
+            print("ERROR: Could not find room name", name, "-- check semantic map", complexity)
+            sys.exit()
         print("Creating room_victims list...")
-        room_victims = {'total': {'green': 0, 'yellow': 0, 'type': 0}}
+        room_victims = {'total': {'Green': 0, 'Yellow': 0, 'type': 0}}
         for v in df['data_mission_victim_list'][df['data_mission_victim_list'].notnull()].values[0]:
             r = v['room_name']
-            if r not in room_victims:
-                room_victims[r] = {'green': 0, 'yellow': 0, 'type': 0}
+            room_id = get_room_id(r)
+            if room_id not in room_victims:
+                room_victims[room_id] = {'Green': 0, 'Yellow': 0, 'type': 0}
             if v['block_type'] == 'block_victim_1':
-                room_victims['total']['green'] += 1
-                room_victims[r]['green'] += 1
+                room_victims['total']['Green'] += 1
+                room_victims[room_id]['Green'] += 1
             elif v['block_type'] == 'block_victim_2':
-                room_victims['total']['yellow'] += 1
-                room_victims[r]['yellow'] += 1
-
+                room_victims['total']['Yellow'] += 1
+                room_victims[room_id]['Yellow'] += 1
         # Determines the type of each room.
         # 0) no victims, 1) one or more yellow victims,
         # 2) One or more green victims, 3) a mix of green and yellow.
-        for k, v in room_victims.items():
-            if   v['yellow'] >  0 and v['green'] == 0: v['type'] = 1
-            elif v['yellow'] == 0 and v['green'] >  0: v['type'] = 2
-            elif v['yellow'] >  0 and v['green'] >  0: v['type'] = 3
+        update_room_types(room_victims)
+        # Create rooms in room_victims for rooms with zero victims
+        for id, r in rooms[complexity].items():
+            if id not in room_victims:
+                room_victims[id] = {'Green': 0, 'Yellow': 0, 'type': 0}
 
         # Fills the event rows that have blank values with their values from the previous row
         # cols = ['data_x', 'data_y', 'data_z', 'data_mission_timer', 'data_blocks']
@@ -266,29 +278,29 @@ def main():
         # Determine the victims in view at any moment and put into
         # 'ext_victims_in_view'.
         print("Creating victims in view...")
-        # df['ext_rooms_in_view'] = np.NaN
         df['ext_victims_in_view'] = np.NaN
-        # df['ext_rooms_in_view'] = df['ext_rooms_in_view'].astype('object')
         df['ext_victims_in_view'] = df['ext_victims_in_view'].astype('object')
-        for i, r in tqdm(df.iterrows()):
+        def find_victims_in_view(blocks):
+            vl = []
+            for b in blocks:
+                if b['type'].startswith('block_victim'):
+                    (x, y, z) = b['location']
+                    vl.append((x, y, z))
+            return vl
+        for i, r in df.iterrows():
             if r['topic'] == 'agent/pygl_fov/player/3d/summary':
-                # df.at[i, 'ext_rooms_in_view'] = find_rooms_in_view(
-                #     blocks=r['data_blocks'],
-                #     diff=complexity,
-                #     map=map,
-                #     room_to_parent=room_to_parent)
                 df.at[i, 'ext_victims_in_view'] = find_victims_in_view(
                     blocks=r['data_blocks'])
 
-        # Determine victims seen since last event and put them in 'ext_victims_seen'
-        print("Determining victims seen since last event...")
+        # Determine victims seen since last victim_triaged event and put them in 'ext_victims_seen'
+        print("Determining victims seen since last triage event...")
         df['ext_victims_seen'] = np.NaN
         df['ext_victims_seen'] = df['ext_victims_seen'].astype('object')
         vl = set()
-        for i, r in tqdm(df.iterrows()):
-            # If it's an event, put the list of victims seen in the dataframe,
+        for i, r in df.iterrows():
+            # If it's a triage event, put the list of victims seen in the dataframe,
             # reset the victim list, and continue
-            if r['ext_event'] == 'victim_triaged' or r['ext_event'] == 'room_entered':
+            if r['ext_event'] == 'victim_triaged':
                 df.at[i, 'ext_victims_seen'] = sorted(list(vl))
                 vl = set()
                 continue
@@ -297,20 +309,63 @@ def main():
             # Add the victims in view to the set
             for v in r['ext_victims_in_view']: vl.add(v)
 
+        # Determine rooms skipped since last room_entered event put them in 'ext_rooms_skipped'
+        print("Determining rooms skipped since last room entered event...")
+        df['ext_rooms_skipped'] = np.NaN
+        df['ext_rooms_skipped'] = df['ext_rooms_skipped'].astype('object')
+        vl = {}
+        for i, r in df.iterrows():
+            # If it's a room entered event, put the list of rooms triggered in the dataframe,
+            # reset the triggered list, and continue
+            if r['ext_event'] == 'room_entered':
+                # Discard the room that has been entered
+                if r['ext_room_id'] in vl: vl.pop(r['ext_room_id'])
+                vlx = []
+                for k, v in vl.items():
+                    vlx.append({'id': k, 'type': v})
+                df.at[i, 'ext_rooms_skipped'] = vlx
+                vl = {}
+                continue
+            # If there are no rooms triggered, continue
+            if not isinstance(r['ext_trigger'], str): continue
+            # Add the room triggered to the set, accounting for the fact that
+            # if it's after five minutes, all yellow victims are expired
+            id = r['ext_trigger']
+            if i < expire_index:
+                vl[id] = room_victims[id]['type']
+            else:
+                green = room_victims[id]['Green']
+                if green == 0: vl[id] = 0
+                else: vl[id] = 2
+
         # Create a new df, event_df, to contain all event rows with events
         event_df = df[(df['ext_event']=='victim_triaged') |
             (df['ext_event']=='room_entered')].copy()
 
-        # Determine victim strategy at each moment
+        print("Determining victims skipped and strategy since last triage event...")
+        df['ext_victims_skipped'] = np.NaN
+        df['ext_victims_skipped'] = df['ext_victims_skipped'].astype('object')
+        victim_strategy = orig_victim_strategy
         for i, r in event_df.iterrows():
             if r['ext_event'] == 'victim_triaged':
+                # Determine victim strategy at each moment
                 victim_strategy = compute_victim_strategy(
                     old_vs=victim_strategy,
                     rescued=r['data_color'],
                     viewed=r['ext_victims_seen'],
                     victim_list=victim_list
                 )
-            event_df.at[i, 'ext_victim_strategy'] = victim_strategy
+                event_df.at[i, 'ext_victim_strategy'] = victim_strategy
+                # Determine colors of victims seen since last triaged
+                (green, yellow) = (0, 0)
+                for v in r['ext_victims_seen']:
+                    if victim_list[v]['color'] == 'Green': green += 1
+                    elif victim_list[v]['color'] == 'Yellow': yellow += 1
+                # Subtract one for the victim currently being triaged
+                if r['data_color'] == 'Green': green -= 1
+                elif r['data_color'] == 'Yellow': yellow -= 1
+                event_df.at[i, 'ext_victims_skipped_green'] = green
+                event_df.at[i, 'ext_victims_skipped_yellow'] = yellow
 
         # Determine the distance of the next victim
         event_df['ext_next_victim_distance'] = (
@@ -320,7 +375,7 @@ def main():
             **(1/2))
 
         # Determine yellow victims remaining at each point
-        yellow = rooms['total']['yellow']
+        yellow = room_victims['total']['Yellow']
         for i, row in event_df.iterrows():
             # If the row is greater than the expire_index (when all yellows die)
             # then yellow must be zero
@@ -332,36 +387,52 @@ def main():
             event_df.at[i, 'ext_total_yellow_victims_remaining'] = yellow
 
         # Determine green and yellow victims in current room
+        tmp_room_victims = copy.deepcopy(room_victims)
         for i, row in event_df.iterrows():
-            r = row['ext_room_name']
+            r = row['ext_room_id']
             # Does the room have any victims?
-            if r not in room_victims:
+            if r not in tmp_room_victims:
                 event_df.at[i, 'ext_yellow_victims_in_current_room'] = 0
                 event_df.at[i, 'ext_green_victims_in_current_room'] = 0
                 continue
             # If the row is greater than the expire_index (when all yellows die)
             # then yellow must be zero
             if i >= expire_index:
-                room_victims[r]['yellow'] = 0
+                tmp_room_victims[r]['Yellow'] = 0
             # Else if the triaged victim was yellow, decrease yellows by 1
             elif row['data_color'] == 'Yellow':
-                room_victims[r]['yellow'] -= 1
+                tmp_room_victims[r]['Yellow'] -= 1
             # Else if the triaged victim was green, decrease greens by 1
             if row['data_color'] == 'Green':
-                room_victims[r]['green'] -= 1
-            event_df.at[i, 'ext_yellow_victims_in_current_room'] = room_victims[r]['yellow']
-            event_df.at[i, 'ext_green_victims_in_current_room'] = room_victims[r]['green']
-            event_df.at[i, 'ext_room_type'] = room_victims[r]['type']
+                tmp_room_victims[r]['Green'] -= 1
+            event_df.at[i, 'ext_yellow_victims_in_current_room'] = tmp_room_victims[r]['Yellow']
+            event_df.at[i, 'ext_green_victims_in_current_room'] = tmp_room_victims[r]['Green']
+            update_room_types(tmp_room_victims)
+            event_df.at[i, 'ext_room_type'] = tmp_room_victims[r]['type']
+
+        # Determine time spent in each victim strategy, first five minutes only
+        prev_sr = 600
+        prev_vs = orig_victim_strategy
+        vs_data = {prev_vs: 0}
+        for i, row in event_df.loc[event_df['ext_event']=='victim_triaged'].iterrows():
+            vs = row['ext_victim_strategy']
+            if vs not in vs_data: vs_data[vs] = 0
+            sr = row['ext_seconds_remaining']
+            if sr >= 300:
+                time_elapsed = prev_sr - sr
+                vs_data[prev_vs] += time_elapsed
+                prev_vs = vs
+                prev_sr = sr
+            else:
+                time_elapsed = prev_sr - 300
+                vs_data[prev_vs] += time_elapsed
+                break
+
 
         # Put in Q7 survey responses
         q7_cols = [col for col in survey_df if col.startswith('Q7_')]
         q7 = survey_df[q7_cols]
         event_df['ext_q7_average'] = q7.mean(axis=1, skipna=True)[member_id]
-        event_df['member_id'] = member_id
-        event_df['trial_id'] = trial_id
-        event_df['complexity'] = complexity
-        event_df['training'] = training
-        event_df['ext_goal'] = goal
 
         sys.exit()
 
@@ -391,6 +462,15 @@ def main():
         sys.exit()
 
 
+        # Create a final dictionary to hold all of the data
+        final = {
+            'member_id': member_id,
+            'trial_id': trial_id,
+            'complexity': complexity,
+            'training': training,
+            'goal': goal,
+            'events': [],
+        }
 
 
 
@@ -407,46 +487,6 @@ def main():
         # plot_map(fname, area_df, connection_df, location_df, df)
 
 
-def find_rooms_in_view(blocks, diff, map, room_to_parent):
-    """Find all of the rooms that are in the current FoV"""
-    # Make a unique list of room ids
-    ids = set()
-    # Loop through every block in the FoV message
-    for b in blocks:
-        (bx, by, bz) = b['location']
-        for d in ('locations', 'connections'):
-            for x in map[diff][d]:
-                if 'bounds' not in x:
-                    continue
-                x1, z1, x2, z2 = (
-                    x['bounds']['coordinates'][0]['x'],
-                    x['bounds']['coordinates'][0]['z'],
-                    x['bounds']['coordinates'][1]['x'],
-                    x['bounds']['coordinates'][1]['z'])
-                if x1 <= bx <= x2  and  z1 <= bz <= z2:
-                    # If it's a location, get the room id and parent room ids
-                    if d == 'locations':
-                        # print('Adding room')
-                        ids.add(x['id'])
-                        if x['id'] in room_to_parent[diff]:
-                            # print('Adding room parent')
-                            ids.add(room_to_parent[diff][x['id']])
-                    # If it's a connection, get the rooms it is connected to
-                    elif d == 'connections':
-                        for c in x['connected_locations']:
-                            # print('Adding connected room')
-                            ids.add(c)
-    return sorted(list(ids))
-
-# Scan through the blocks to find victims in view
-def find_victims_in_view(blocks):
-    vl = []
-    for b in blocks:
-        if b['type'].startswith('block_victim'):
-            (x, y, z) = b['location']
-            vl.append((x, y, z))
-    return vl
-
 # Get the metadata about the file from the filename and fill in the values into
 # the dataframe
 def get_metadata(name):
@@ -456,6 +496,13 @@ def get_metadata(name):
     complexity = s.group(2)
     training = s.group(1)
     return (member_id, trial_id, complexity, training)
+
+def update_room_types(room_victims):
+    for k, v in room_victims.items():
+        if   v['Yellow'] == 0 and v['Green'] == 0: v['type'] = 0
+        elif v['Yellow'] >  0 and v['Green'] == 0: v['type'] = 1
+        elif v['Yellow'] == 0 and v['Green'] >  0: v['type'] = 2
+        elif v['Yellow'] >  0 and v['Green'] >  0: v['type'] = 3
 
 # Find when the game start and calculate elapsed time based on that
 def set_elapsed_time(df):
