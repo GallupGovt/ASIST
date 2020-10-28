@@ -14,49 +14,52 @@ from tqdm import tqdm
 import math
 import copy
 
+root_dir = '/mnt/DARPA/CONSULTING/Analytics/Phase_1/Data'
+competency_dir = f'{root_dir}/competency_data'
+trial_dir = f'{root_dir}/trial_data'
+export_dir = f'{root_dir}/processed_data'
+map_dir = f'{root_dir}/map_data'
+survey_file = f'{root_dir}/study-1_2020.08_HSRData_SurveysNumeric_CondBtwn-na_CondWin-na_Trial-na_Team-na_Member-na_Vers-1.csv'
+
+DIFFICULTIES = ('Easy', 'Medium', 'Hard')
+
+"""
+Additional variables created in the dataframe after loading the metadata,
+and what each variable holds, for easy reference. Add new variables to this
+list alphabetically.
+
+data_entered_area_id - the id of the room being entered
+data_exited_area_id - the id of the room being exited
+data_score - current score
+ext_beeps - Holds the number of beeps when the beeper goes off (1 - green, 2 - yellow)
+ext_event - type of event (see events above)
+ext_exited_room_type - type of room the player exited (in real time)
+ext_green_per_minute - number of green victims saved per minute (triage events only)
+ext_green_victims_in_current_room (used on event messages)
+ext_last_room_id - the id of the previous room the player was in
+ext_next_room_id - the id of the next room the player will enter
+ext_next_room_id - The id of the room that the player will enter next
+ext_next_victim_distance - distance to next victim triaged (used on event messages)
+ext_room_id - Room currently in
+ext_room_name - Room name currently in (DO NOT TRUST, use room id and semantic map instead)
+ext_room_skipped - on trigger events, the id of a room that has been skipped
+ext_room_type - type of room the player is in, based upon the actual state of the room
+ext_rooms_skipped - ids of rooms skipped, room entered events only ([{'id': 'tkt', 'type': 1}])
+ext_seconds_remaining - Seconds remaining in mission
+ext_total_yellow_victims_remaining (used on event messages)
+ext_trigger - Holds a room id when the trigger point is stepped on (parent rooms only)
+ext_victim_strategy - current victim strategy (used on triage event messages)
+ext_victims_in_view - a list of keys to victim_list (used on FoV messages)
+ext_victims_seen - victims seen since last room entered event (keys to victim_list, used on event messages)
+ext_victims_skipped_green - green victims skipped, triage events only
+ext_victims_skipped_yellow - yellow victims skipped, triage events only
+ext_yellow_per_minute - number of yellow victims saved per minute (triage events only)
+ext_yellow_victims_in_current_room (used on event messages)
+ext_prior_use_consistent - the running total of rooms skipped consistent with victim strategy
+ext_prior_use_inconsistent - the running total of rooms skipped inconsistent with victim strategy
+"""
+
 def main():
-
-    # directory = 'Data/messages/Falcon/'
-    directory = '/home/erik_jones/git/asist_data'
-    condition_path = 'Data/metadata/conditions_metadata.csv'
-    survey_path = 'Data/surveys/surveys_NEW.csv'
-    map_path = 'Data/Locations'
-
-    DIFFICULTIES = ('Easy', 'Medium', 'Hard')
-
-    """
-    Additional variables created in the dataframe after loading the metadata,
-    and what each variable holds, for easy reference. Add new variables to this
-    list alphabetically.
-
-    data_entered_area_id - the id of the room being entered
-    data_exited_area_id - the id of the room being exited
-    data_score - current score
-    ext_beeps - Holds the number of beeps when the beeper goes off (1 - green, 2 - yellow)
-    ext_event - type of event (see events above)
-    ext_exited_room_type - type of room the player exited (in real time)
-    ext_green_per_minute - number of green victims saved per minute (triage events only)
-    ext_green_victims_in_current_room (used on event messages)
-    ext_last_room_id - the id of the previous room the player was in
-    ext_next_room_id - the id of the next room the player will enter
-    ext_next_room_id - The id of the room that the player will enter next
-    ext_next_victim_distance - distance to next victim triaged (used on event messages)
-    ext_room_id - Room currently in
-    ext_room_name - Room name currently in (DO NOT TRUST, use room id and semantic map instead)
-    ext_room_skipped - on trigger events, the id of a room that has been skipped
-    ext_room_type - type of room the player is in, based upon the actual state of the room
-    ext_rooms_skipped - ids of rooms skipped, room entered events only ([{'id': 'tkt', 'type': 1}])
-    ext_seconds_remaining - Seconds remaining in mission
-    ext_total_yellow_victims_remaining (used on event messages)
-    ext_trigger - Holds a room id when the trigger point is stepped on (parent rooms only)
-    ext_victim_strategy - current victim strategy (used on triage event messages)
-    ext_victims_in_view - a list of keys to victim_list (used on FoV messages)
-    ext_victims_seen - victims seen since last room entered event (keys to victim_list, used on event messages)
-    ext_victims_skipped_green - green victims skipped, triage events only
-    ext_victims_skipped_yellow - yellow victims skipped, triage events only
-    ext_yellow_per_minute - number of yellow victims saved per minute (triage events only)
-    ext_yellow_victims_in_current_room (used on event messages)
-    """
 
     # Load the semantic maps (room locations). A separate one of each of these
     # dictionaries is created for each difficulty level.
@@ -89,7 +92,7 @@ def main():
     for d in (DIFFICULTIES):
         room_to_parent[d] = {}
         rooms[d] = {}
-        with open(map_path + f'/Falcon_v1.0_{d}_sm.json') as f:
+        with open(map_dir + f'/Falcon_v1.0_{d}_sm.json') as f:
             map[d] = json.loads(f.read())
         for loc in map[d]['locations']:
             rooms[d][loc['id']] = {'name': loc['name'], 'type': loc['type']}
@@ -140,27 +143,33 @@ def main():
     # Create a mapping of beep trigger coordinates to room ids, and a
     # list of rooms with trigger points. This comes from the MapInfo_{diff}.csv
     # files. trigger_rooms sample data: ['acr', 'br', ...]
-    trigger_rooms = []
+    trigger_rooms = {}
     for d in (DIFFICULTIES):
-        tdf = pd.read_csv(f'{map_path}/MapInfo_{d}.csv')
+        trigger_rooms[d] = []
+        tdf = pd.read_csv(f'{map_dir}/MapInfo_{d}.csv')
         for i, row in tdf.iterrows():
             (x, y, z) = row['LocationXYZ'].split()
             (x, y, z) = (int(x), int(y), int(z))
             for room_id, room in rooms[d].items():
                 if room['name'] == row['RoomName']:
                     coordinates[d][(x, z)]['trigger'] = room_id
-                    if room_id not in trigger_rooms:
-                        trigger_rooms.append(room_id)
+                    if room_id not in trigger_rooms[d]:
+                        trigger_rooms[d].append(room_id)
 
     # Read in the survey data, indexed to the member_id
-    survey_df = pd.read_csv(survey_path, skiprows=[1,2], index_col='Q5')
+    survey_df = pd.read_csv(survey_file, skiprows=[1,2], index_col='Q5')
     survey_df.replace(-99, np.NaN, inplace=True)
+    survey_df.index = survey_df.index.str.strip()
 
     # Loop through each JSON file
-    for name in glob.glob(directory+'/*.json'):
-        fname = name.replace(directory, "")
+    for name in glob.glob(trial_dir+'/*.metadata'):
+        fname = name.replace(trial_dir, "")
 
-        if 'TrialMessages_CondBtwn-TriageSignal_CondWin-FalconMed-StaticMap_Trial-170_Team-na_Member-68_Vers-1' not in fname: continue
+        # if 'Trial-170_Team-na_Member-68_Vers-1' not in name: continue
+        # if 'Trial-116_Team-na_Member-50_Vers-1' not in name: continue
+
+        # Don't do files that are NoTriage or NoSignal
+        if 'NoTriage' in name or 'NoSignal' in name: continue
 
         # Get the information out of the filename
         s = re.search(r'TrialMessages_CondBtwn-(.*)_CondWin-Falcon(.*)-.*Trial-(.*)_Team.*_Member-(.*)_', name)
@@ -170,12 +179,19 @@ def main():
         training = s.group(1)
         if complexity == 'Med': complexity = 'Medium'
 
+        # A function for writing error messages
+        def write_error(error):
+            print("ERROR:", error)
+            with open(f"{export_dir}/member_{member_id}_trial_{trial_id}_ERROR.txt", "w") as f:
+                f.write(error + '\n')
+
+        print(f'------------------\nFILE: {name}\nProcessing {member_id}...')
         # Pull in the raw data from the json file into a dictionary, keeping
         # only topic, data, and msg. Originally we had to pull out the "god"
         # data from the player ASIST3, but that seems to no longer be true in
         # newer files.
         print("Loading JSON...")
-        with open(directory+fname) as f:
+        with open(trial_dir+fname) as f:
             orig_data = json.loads("[" + f.read().replace("}\n{", "},\n{") + "]")
         data = []
         for line in orig_data:
@@ -224,18 +240,22 @@ def main():
             subject_id = r['data_subjects'][0]
             break
 
-        # Get their goal from the survey. The numbers correspond to
+        # Get their workload from the survey. The numbers correspond to
         # the order of three columns in the order of Easy, Medium, and Hard. If
-        # the numbers are 213, the order of those three columns are Q13=Medium,
-        # Q17=Easy, Q21=Hard. Start with getting Column o
-        o = survey_df.at[subject_id, 'o'].replace('/', '')
+        # the numbers are 213, the order of those three columns are Q212=Medium,
+        # Q221=Easy, Q230=Hard. Start with getting Column o, and turning it into
+        # a three-digit string.
+        try:
+            o = survey_df.at[subject_id, 'o'].replace('/', '').replace('200', '')
+        except KeyError as e:
+            write_error("Member not found in survey file")
+            continue
         # Figure out which number to look for based on the complexity
-        seek = {'Easy': 1, 'Medium': 2, 'Hard': 3}[complexity]-1
-        # Figure out which goal column to look at based on the seek number
-        # and get that goal
-        goal_column = ('Q12', 'Q16', 'Q20')[seek]
-        goal_code = int(survey_df.at[subject_id, goal_column])-1
-        goal = ['victims', 'extinguisher', 'tasks', 'points'][goal_code]
+        seek = {
+            'Easy': int(o[0]),
+            'Medium': int(o[1]),
+            'Hard': int(o[2])
+        }[complexity] - 1
         # Do the same for the workload columns
         workload_column = ('Q212', 'Q221', 'Q230')[seek]
         workload = int(survey_df.at[subject_id, workload_column])
@@ -329,17 +349,21 @@ def main():
             if (  t != r['ext_room_id']
             and t != r['ext_next_room_id']
             and t != r['ext_last_room_id']
-            and t in trigger_rooms
+            and t in trigger_rooms[complexity]
             ):
                 count += 1
                 df.at[i, 'ext_room_skipped'] = t
 
         # Creating ext_beeps to indicate number of beeps (1 = green, 2 = yellow)
-        for i, r in df[df['data_beep_x'].notnull()].iterrows():
-            if r['data_message'] == 'Beep':
-                df.at[i, 'ext_beeps'] = 1
-            elif r['data_message'] == 'Beep Beep':
-                df.at[i, 'ext_beeps'] = 2
+        try:
+            for i, r in df[df['data_beep_x'].notnull()].iterrows():
+                if r['data_message'] == 'Beep':
+                    df.at[i, 'ext_beeps'] = 1
+                elif r['data_message'] == 'Beep Beep':
+                    df.at[i, 'ext_beeps'] = 2
+        except KeyError as e:
+            write_error('No beep events in file')
+            continue
 
         # Creates a victim list where the key is a hash of the x/y/z coordinates.
         # Stores the color of the victim and the room id.
@@ -354,6 +378,7 @@ def main():
         #               'x': -2101,
         #               'y': 60,
         #               'z': 186}
+        # NOTE: This is the version of the victim list from the FoV messages
         print("Creating victim list from FoV...")
         victim_list = {}
         for i, r in df.iterrows():
@@ -369,6 +394,7 @@ def main():
                         'room': coordinates[complexity][(vx, vz)]['room']
                     }
 
+        # NOTE: This is the version of the victim list from the ground truth
         print("Creating victim list from ground truth...")
         victim_list2 = {}
         for i, r in df[df['topic']=='ground_truth/mission/victims_list'].iterrows():
@@ -389,7 +415,7 @@ def main():
                     'room_name_from_coords': rooms[complexity][room]['name']
                 }
 
-        # For the time being, we will use the ground truth victim list
+        # For the time being, we will use the **ground truth** victim list
         victim_list = victim_list2
 
         # for k in victim_list2.keys():
@@ -541,7 +567,8 @@ def main():
             # If it's a room entered event, put the list of rooms triggered in the dataframe,
             # reset the triggered list, and continue
             if r['ext_event'] == 'room_entered':
-                if len(vl) == 0: continue
+                if len(vl) == 0:
+                    df.at[i, 'ext_rooms_skipped'] = []
                 vlx = []
                 for k, v in vl.items():
                     vlx.append({'id': k, 'type': v})
@@ -638,7 +665,7 @@ def main():
             last_room_type = tmp_room_victims[r]['type']
             event_df.at[i, 'ext_room_type'] = last_room_type
 
-        # Determine exactly who was left behind
+        # Determine exactly who was left behind (doesn't work without FoV)
         # for i, row in event_df.iterrows():
         #     if row['ext_event'] == 'room_entered':
         #         print(row['ext_seconds_remaining'], "EXITED TYPE:", row['ext_exited_room_type'], "VICTIMS SEEN:", row['ext_victims_seen'])
@@ -713,7 +740,7 @@ def main():
         for i, row in event_df.iterrows():
             # Do not calculate a navigation strategy unless they've entered a
             # room that specifically has a trigger point
-            if row['data_entered_area_id'] not in trigger_rooms:
+            if row['data_entered_area_id'] not in trigger_rooms[complexity]:
                 event_df.at[i, 'ext_nav_strategy'] = nav_strategy
                 continue
             # print("TIME:", row['ext_seconds_remaining'])
@@ -723,20 +750,34 @@ def main():
             # print('-----------------')
             event_df.at[i, 'ext_nav_strategy'] = nav_strategy
 
-
-
-
-        # Figure out prior use of device. Every time a participant skips
+        # FROM PABLO: Figure out prior use of device. Every time a participant skips
         # an empty room (i.e. player enters trigger block > no beep > does
         # not enter room), or a room inconsistent with current strategy
         # (e.g. current strategy = “yellow only”, player enters trigger
         # block > one beep (“green only room”) > does not enter room) 
         # Keep the running total of each one of those two things.
+        # victim strategies: ('Yellow Only', 'Mixed', 'Sequential', 'Green Only')
+        (consistent, inconsistent) = (0, 0)
+        for i, row in event_df[event_df['ext_event']=='room_entered'].iterrows():
+            vs = row['ext_victim_strategy']
+            skipped = row['ext_rooms_skipped']
+            if not isinstance(skipped, list): skipped = []
+            for s in skipped:
+                if s['type'] == 0: # Empty room
+                    if vs in ('Sequential'): inconsistent += 1
+                    else: consistent += 1
+                elif s['type'] == 1: # Yellow only room
+                    if vs in ('Yellow Only', 'Mixed', 'Sequential'): inconsistent += 1
+                    else: consistent += 1
+                elif s['type'] == 2: # Green Only room
+                    if vs in ('Green Only', 'Mixed', 'Sequential'): inconsistent += 1
+                    else: consistent += 1
+                elif s['type'] == 3: # Both
+                    inconsistent += 1
+            event_df.at[i, 'ext_prior_use_consistent'] = consistent
+            event_df.at[i, 'ext_prior_use_inconsistent'] = inconsistent
 
-
-
-
-        # Determine time spent in each victim strategy and points accumulated
+        # Determine time spent in each victim or nav strategy and points accumulated
         # per strategy, first five minutes only. As a shortcut, I am assuming
         # that the time of the mission is always 600 seconds (prev_sr) and that
         # victims expire at 300 seconds. If this turns out to not be the case
@@ -746,50 +787,29 @@ def main():
         # Sample data:
         # 'Mixed': {'time_spent': 556.0, 'score': 230, 'points_per_minute': 46},
         # 'Yellow Only': {'time_spent': 34.0, 'score': , 'points_per_minute': }
-        prev_score = 0
-        prev_sr = 600
-        vs_data = {}
-        for i, row in event_df.loc[event_df['ext_event']=='victim_triaged'].iterrows():
-            vs = row['ext_victim_strategy']
-            if vs not in vs_data: vs_data[vs] = {'time_spent': 0, 'score': 0}
-            sr = row['ext_seconds_remaining']
-            score = row['data_score']
-            points_added = score - prev_score
-            vs_data[vs]['score'] += points_added
-            if sr >= 300:
-                time_elapsed = prev_sr - sr
-                vs_data[vs]['time_spent'] += time_elapsed
-                prev_sr = sr
-                prev_score = score
-            else:
-                time_elapsed = prev_sr - 300
-                vs_data[vs]['time_spent'] += time_elapsed
-                break
-
-        # Determine time spent in each nav strategy and points accumulated
-        # per strategy, first five minutes only. Yes, I'm embarrassed that it's
-        # basically copy-paste of the above function, but I'm busy. nav_data
-        # looks the same as vs_data, only with navigation strategies as the keys
-        # instead of victim strategies.
-        prev_score = 0
-        prev_sr = 600
-        nav_data = {}
-        for i, row in event_df.loc[event_df['ext_event']=='room_entered'].iterrows():
-            vs = row['ext_nav_strategy']
-            if vs not in nav_data: nav_data[vs] = {'time_spent': 0, 'score': 0}
-            sr = row['ext_seconds_remaining']
-            score = row['data_score']
-            points_added = score - prev_score
-            nav_data[vs]['score'] += points_added
-            if sr >= 300:
-                time_elapsed = prev_sr - sr
-                nav_data[vs]['time_spent'] += time_elapsed
-                prev_sr = sr
-                prev_score = score
-            else:
-                time_elapsed = prev_sr - 300
-                nav_data[vs]['time_spent'] += time_elapsed
-                break
+        def get_strategy_data(event, strategy):
+            prev_score = 0
+            prev_sr = 600
+            data = {}
+            for i, row in event_df.loc[event_df['ext_event']==event].iterrows():
+                vs = row[strategy]
+                if vs not in data: data[vs] = {'time_spent': 0, 'score': 0}
+                sr = row['ext_seconds_remaining']
+                score = row['data_score']
+                points_added = score - prev_score
+                data[vs]['score'] += points_added
+                if sr >= 300:
+                    time_elapsed = prev_sr - sr
+                    data[vs]['time_spent'] += time_elapsed
+                    prev_sr = sr
+                    prev_score = score
+                else:
+                    time_elapsed = prev_sr - 300
+                    data[vs]['time_spent'] += time_elapsed
+                    break
+            return data
+        nav_data = get_strategy_data('room_entered', 'ext_nav_strategy')
+        vs_data = get_strategy_data('victim_triaged', 'ext_victim_strategy')
 
         # Determine yellow and green victims saved per minute, as well as expected
         # green rate.
@@ -819,27 +839,29 @@ def main():
             for k, v in x.items():
                 v['points_per_minute'] = v['score'] / (v['time_spent'] / 60)
 
-        # Put in Q7 survey responses
-        q7_cols = [col for col in survey_df if col.startswith('Q7_')]
-        q7 = survey_df[q7_cols]
-        q7_average = q7.mean(axis=1, skipna=True)[subject_id]
+        # Put in Q7 and Q8 survey responses
+        def get_average_response(colname):
+            cols = [col for col in survey_df if col.startswith(colname)]
+            return survey_df[cols].mean(axis=1, skipna=True)[subject_id]
+        q7_average = get_average_response('Q7_')
+        q8_average = get_average_response('Q8_')
 
         # Create a final dictionary to hold all of the data
         final = {
-            'complexity': complexity,
-            'final_score': final_score,
-            'goal': goal,
             'member_id': member_id,
-            'navigation_strategy_data': nav_data,
-            'original_nav_strategy': orig_nav_strategy,
-            'original_victim_strategy': orig_victim_strategy,
-            'q7_average': q7_average,
             'subject_id': subject_id,
-            'training': training,
             'trial_id': trial_id,
-            'victim_strategy_data': vs_data,
+            'complexity': complexity,
+            'training': training,
+            'final_score': final_score,
             'videogame_experience': videogame_experience,
+            'q7_average': q7_average,
+            'q8_average': q8_average,
             'workload': workload,
+            'original_nav_strategy': orig_nav_strategy,
+            'navigation_strategy_data': nav_data,
+            'original_victim_strategy': orig_victim_strategy,
+            'victim_strategy_data': vs_data,
             'events': [],
         }
 
@@ -852,19 +874,21 @@ def main():
                 'green_victims_in_current_room': row['ext_green_victims_in_current_room'],
             }
             if row['ext_event'] == 'room_entered':
-                e['room_type'] = row['ext_room_type']
-                e['rooms_skipped'] = row['ext_rooms_skipped']
-                e['exited_room_type'] = row['ext_exited_room_type']
-                e['rooms_entered_not_empty'] = row['ext_rooms_entered_not_empty']
-                e['rooms_entered_empty'] = row['ext_rooms_entered_empty']
                 e['nav_strategy'] = row['ext_nav_strategy']
+                e['room_type'] = row['ext_room_type']
+                e['exited_room_type'] = row['ext_exited_room_type']
+                e['rooms_skipped'] = row['ext_rooms_skipped']
+                e['rooms_entered_empty'] = row['ext_rooms_entered_empty']
+                e['rooms_entered_not_empty'] = row['ext_rooms_entered_not_empty']
+                e['prior_use_consistent'] = row['ext_prior_use_consistent']
+                e['prior_use_inconsistent'] = row['ext_prior_use_inconsistent']
             elif row['ext_event'] == 'victim_triaged':
-                e['color'] = row['data_color']
+                e['victim_strategy'] = row['ext_victim_strategy']
+                e['victim_color'] = row['data_color']
                 e['next_victim_distance'] = row['ext_next_victim_distance']
                 e['total_yellow_victims_remaining'] = row['ext_total_yellow_victims_remaining']
-                e['victim_strategy'] = row['ext_victim_strategy']
-                e['victims_skipped_green'] = row['ext_victims_skipped_green']
-                e['victims_skipped_yellow'] = row['ext_victims_skipped_yellow']
+                # e['victims_skipped_green'] = row['ext_victims_skipped_green']
+                # e['victims_skipped_yellow'] = row['ext_victims_skipped_yellow']
                 e['yellow_per_minute'] = row['ext_yellow_per_minute']
                 e['green_per_minute'] = row['ext_green_per_minute']
                 e['expected_green_rate'] = row['ext_expected_green_rate']
@@ -872,8 +896,30 @@ def main():
                 print(f"EXCEPTION: Event {row['ext_event']} not recognized")
                 sys.exit()
             final['events'].append(e)
-        pprint.pprint(final, indent=2)
-        sys.exit()
+
+        with open(f"{export_dir}/member_{member_id}_trial_{trial_id}_results.json", "w") as f:
+            json.dump(final, f, indent=2, sort_keys=False)
+
+def convert_json_to_csv():
+    final_df, final_edf = (None, None)
+    for name in glob.glob(export_dir+'/*.json'):
+        print(name)
+        with open(name) as f:
+            data = json.load(f)
+        events = data.pop('events')
+        df = pd.json_normalize(data)
+        edf = pd.json_normalize(events)
+        edf['member_id'] = data['member_id']
+        edf['trial_id'] = data['trial_id']
+        final_df = df if final_df is None else final_df.append(df)
+        final_edf = edf if final_edf is None else final_edf.append(edf)
+    for col in ('trial_id', 'member_id'):
+        x = final_edf[col]
+        final_edf.drop(labels=[col], axis=1, inplace=True)
+        final_edf.insert(0, col, x)
+    final_df.to_csv(f'{export_dir}/results_data.csv', index=False)
+    final_edf.to_csv(f'{export_dir}/results_events.csv', index=False)
 
 if __name__ == "__main__":
     main()
+    convert_json_to_csv()
