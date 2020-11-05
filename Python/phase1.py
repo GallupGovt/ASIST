@@ -68,7 +68,7 @@ def main():
     # --------------------------------------------------------------------------
     # Remove old error messages
     # --------------------------------------------------------------------------
-    os.system(f'rm {export_dir}/*_ERROR.txt')
+    # os.system(f'rm {export_dir}/*_ERROR.txt')
 
     # --------------------------------------------------------------------------
     # Read in the survey data, indexed to the member_id (Q5)
@@ -92,17 +92,16 @@ def main():
     # --------------------------------------------------------------------------
     # Loop through each JSON file
     # --------------------------------------------------------------------------
-    # begin_parsing = False
+    begin_parsing = False
     for name in sorted(glob.glob(trial_dir+'/*.metadata')):
         fname = name.replace(trial_dir, "")
 
 
 
-        # Don't do files that are NoTriage or NoSignal
-        # if 'FalconEasy-StaticMap_Trial-257' in name:
-        #     begin_parsing = True
-        #     continue
-        # if begin_parsing is False: continue
+        if 'FalconEasy-StaticMap_Trial-268' in name:
+            begin_parsing = True
+            continue
+        if begin_parsing is False: continue
 
 
         # ----------------------------------------------------------------------
@@ -184,7 +183,6 @@ def main():
                     # Discard any fov message from the original data that is not
                     # found in the new fov data
                     if n not in fovd:
-                        # newdata.append(d)
                         continue
                     # Replace it with the message from the fov data
                     x = fovd[n]
@@ -224,22 +222,12 @@ def main():
         df = pd.json_normalize(data)
         df.columns = df.columns.map(lambda x: x.replace(".", "_"))
 
-        # -------------------------------------------------------------------
-        # We need to process all of the messages from the new semantic map
-        # updates. We start by making a complete copy of the original map
-        # data.
-        #
-        # *ON HOLD*. I could find no instance where the semantic map updates
-        # actually updated the dimensions of a room, which is all we care about
-        # so far.
-        # -------------------------------------------------------------------
-        map = copy.deepcopy(orig_map)
-
         # ----------------------------------------------------------------------
         # Create all of the data from the map information, including room
         # information and coordinates.
         # ----------------------------------------------------------------------
         print("Creating map data...")
+        map = copy.deepcopy(orig_map)
         # room_to_parent is a mapping of child room ids to their parent room id
         # sample data: {'room_child_id': 'room_id', ...}
         room_to_parent = {}
@@ -337,11 +325,13 @@ def main():
 
         # ----------------------------------------------------------------------
         # Subject id is P00000##, as opposed to member_id, which is just ##.
-        # Subject id is the same as the index in survey_df, column Q5
+        # Subject id is the same as the index in survey_df, column Q5.
+        # NOTE: Trial data is sometimes bad, so using this naive apprach instead
         # ----------------------------------------------------------------------
-        for i, r in df.loc[df['data_subjects'].notnull()].iterrows():
-            subject_id = r['data_subjects'][0]
-            break
+        # for i, r in df.loc[df['data_subjects'].notnull()].iterrows():
+        #     subject_id = r['data_subjects'][0]
+        #     break
+        subject_id = 'P' + str(member_id).zfill(6)
 
         # ----------------------------------------------------------------------
         # Get their workload from the survey. The numbers correspond to
@@ -353,18 +343,17 @@ def main():
         try:
             # Correct that these look like dates, i.e. 01/02/2003
             o = survey_df.at[subject_id, 'o'].replace('/', '').replace('200', '')
+            # Figure out which number to look for based on the complexity
+            seek = {
+                'Easy': int(o[0]),
+                'Medium': int(o[1]),
+                'Hard': int(o[2])
+            }[complexity] - 1
+            # Do the same for the workload columns
+            workload_column = ('Q212', 'Q221', 'Q230')[seek]
+            workload = int(survey_df.at[subject_id, workload_column])
         except KeyError as e:
-            write_error("Member not found in survey file")
-            continue
-        # Figure out which number to look for based on the complexity
-        seek = {
-            'Easy': int(o[0]),
-            'Medium': int(o[1]),
-            'Hard': int(o[2])
-        }[complexity] - 1
-        # Do the same for the workload columns
-        workload_column = ('Q212', 'Q221', 'Q230')[seek]
-        workload = int(survey_df.at[subject_id, workload_column])
+            workload = None
 
         # ----------------------------------------------------------------------
         # Create original victim and navigation strategies. Right now, this is
@@ -397,7 +386,10 @@ def main():
             tournaments_won = get_val(survey_df.at[subject_id, 'Q271'])
             score = often_played + frequency + better + tournaments + tournaments_won
             return score
-        videogame_experience = calculate_experience()
+        try:
+            videogame_experience = calculate_experience()
+        except Exception as e:
+            videogame_experience = None
 
         # ----------------------------------------------------------------------
         # Creates a victim list where the key is a hash of the x/y/z coordinates.
@@ -481,28 +473,33 @@ def main():
         ):
             df[x] = None # Always best practice to pre-populate non-numerical columns
         entered_a_room = False
-        for i, r in df.loc[df['data_locations'].notnull()].iterrows():
-            loc = r['data_locations'][0]['id']
-            if loc == 'UNKNOWN': continue
-            # We only want parent rooms
-            if loc in room_to_parent[complexity]:
-                loc = room_to_parent[complexity][loc]
-            # Let's have a sanity check for what room we are in from original messages
-            df.at[i, 'ext_sanity_room_loc'] = loc
-            if last_room != loc:
-                # This next line is crucial, it makes it so that we skip
-                # recording the entry info of any room that is not one of the
-                # trigger rooms.
-                if loc not in trigger_rooms[complexity]: continue
-                # What room is the player entering and exiting
-                entered_a_room = True
-                df.at[i, 'data_entered_area_id'] = loc
-                df.at[i, 'data_exited_area_id'] = last_room
-                df.at[i, 'ext_last_room_id'] = last_room
-                if last_i != -1:
-                    df.at[last_i, 'ext_next_room_id'] = loc
-                last_room = loc
-                last_i = i
+        try:
+            for i, r in df.loc[df['data_locations'].notnull()].iterrows():
+                loc = r['data_locations'][0]['id']
+                if loc == 'UNKNOWN': continue
+                # We only want parent rooms
+                if loc in room_to_parent[complexity]:
+                    loc = room_to_parent[complexity][loc]
+                # A sanity check for what room we are in from original messages
+                df.at[i, 'ext_sanity_room_loc'] = loc
+                if last_room != loc:
+                    # This next line is crucial, it makes it so that we skip
+                    # recording the entry info of any room that is not one of the
+                    # trigger rooms.
+                    if loc not in trigger_rooms[complexity]: continue
+                    # What room is the player entering and exiting
+                    entered_a_room = True
+                    df.at[i, 'data_entered_area_id'] = loc
+                    df.at[i, 'data_exited_area_id'] = last_room
+                    df.at[i, 'ext_last_room_id'] = last_room
+                    if last_i != -1:
+                        df.at[last_i, 'ext_next_room_id'] = loc
+                    last_room = loc
+                    last_i = i
+        except Exception as e:
+            write_error("There is no location data in the file")
+            continue
+        # If they never entered a room, the data must be bad
         if entered_a_room is False:
             write_error("There was no record of any room being entered by the player")
             continue
@@ -589,6 +586,9 @@ def main():
                     return key
             print("ERROR: Could not find room name", name, "-- check semantic map", complexity)
             sys.exit()
+        # Determines the type of each room.
+        # 0) no victims, 1) one or more yellow victims,
+        # 2) One or more green victims, 3) a mix of green and yellow.
         def update_room_types(room_victims):
             for k, v in room_victims.items():
                 if   v['Yellow'] == 0 and v['Green'] == 0: v['type'] = 0
@@ -608,9 +608,6 @@ def main():
             elif v['block_type'] == 'block_victim_2':
                 room_victims['total']['Yellow'] += 1
                 room_victims[room_id]['Yellow'] += 1
-        # Determines the type of each room.
-        # 0) no victims, 1) one or more yellow victims,
-        # 2) One or more green victims, 3) a mix of green and yellow.
         update_room_types(room_victims)
         # Create rooms in room_victims for rooms with zero victims
         for id, r in rooms[complexity].items():
@@ -730,9 +727,6 @@ def main():
             # If it's a room entered event, put the list of victims seen in the
             # dataframe, reset the victim list, and continue
             if r['ext_event'] == 'room_entered':
-                # print("ENTERED:", r['data_entered_area_id'])
-                # for v in sorted(list(vl)):
-                #     print('--SEEN IN ROOM:', victim_list[v]['room'])
                 df.at[i, 'ext_victims_seen'] = sorted(list(vl))
                 df.at[i, 'ext_openings_seen'] = openings_seen
                 vl = set()
@@ -873,7 +867,7 @@ def main():
             # Else if the triaged victim was yellow, decrease yellows by 1
             elif row['data_color'] == 'Yellow':
                 tmp_room_victims[r]['Yellow'] -= 1
-            # Else if the triaged victim was green, decrease greens by 1
+            # If the triaged victim was green, decrease greens by 1
             if row['data_color'] == 'Green':
                 tmp_room_victims[r]['Green'] -= 1
             event_df.at[i, 'ext_yellow_victims_in_current_room'] = tmp_room_victims[r]['Yellow']
@@ -983,11 +977,7 @@ def main():
             if row['data_entered_area_id'] not in trigger_rooms[complexity]:
                 event_df.at[i, 'ext_nav_strategy'] = nav_strategy
                 continue
-            # print("TIME:", row['ext_seconds_remaining'])
-            # print("ORIGINAL STRATEGY:", nav_strategy)
             nav_strategy = compute_nav_strategy(nav_strategy, row)
-            # print("NEW STRATEGY:", nav_strategy)
-            # print('-----------------')
             event_df.at[i, 'ext_nav_strategy'] = nav_strategy
 
         # ----------------------------------------------------------------------
@@ -1093,8 +1083,12 @@ def main():
         def get_average_response(colname):
             cols = [col for col in survey_df if col.startswith(colname)]
             return survey_df[cols].mean(axis=1, skipna=True)[subject_id]
-        q7_average = get_average_response('Q7_')
-        q8_average = get_average_response('Q8_')
+        try:
+            q7_average = get_average_response('Q7_')
+            q8_average = get_average_response('Q8_')
+        except Exception as e:
+            q7_average = None
+            q8_average = None
 
         # ----------------------------------------------------------------------
         # Create a final dictionary to hold all of the data
