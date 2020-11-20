@@ -2,3 +2,5 @@ numpy
 pandas
 xlrd
 matplotlib
+tqdm
+

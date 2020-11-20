@@ -9,7 +9,7 @@ from matplotlib.patches import Rectangle
 import textwrap
 import sys
 import re
-import pprint
+from pprint import pprint
 from tqdm import tqdm
 import math
 import copy
@@ -18,6 +18,7 @@ import os
 import competency_test_analysis as cta
 
 root_dir = '/mnt/DARPA/CONSULTING/Analytics/Phase_1/Data'
+# root_dir = '/home/erik_jones/git/asist_data'
 competency_dir = f'{root_dir}/competency_data'
 trial_dir = f'{root_dir}/trial_data'
 export_dir = f'{root_dir}/processed_data'
@@ -63,12 +64,30 @@ ext_prior_use_consistent - the running total of rooms skipped consistent with vi
 ext_prior_use_inconsistent - the running total of rooms skipped inconsistent with victim strategy
 """
 
+def duplicate_rv(rv):
+    return copy.deepcopy(rv)
+
+# Determines the type of each room.
+# 0) no victims, 1) one or more yellow victims,
+# 2) One or more green victims, 3) a mix of green and yellow.
+def update_room_types(rv):
+    (total_y, total_g) = (0, 0)
+    for k, v in rv.items():
+        if   v['Yellow'] == 0 and v['Green'] == 0: v['type'] = 0
+        elif v['Yellow'] >  0 and v['Green'] == 0: v['type'] = 1
+        elif v['Yellow'] == 0 and v['Green'] >  0: v['type'] = 2
+        elif v['Yellow'] >  0 and v['Green'] >  0: v['type'] = 3
+        if k != 'total':
+            total_y += v['Yellow']
+            total_g += v['Green']
+    rv['total'] = {'Green': total_g, 'Yellow': total_y, 'type': 3}
+
 def main():
 
     # --------------------------------------------------------------------------
     # Remove old error messages
     # --------------------------------------------------------------------------
-    # os.system(f'rm {export_dir}/*_ERROR.txt')
+    os.system(f'rm {export_dir}/*_ERROR.txt')
 
     # --------------------------------------------------------------------------
     # Read in the survey data, indexed to the member_id (Q5)
@@ -96,22 +115,21 @@ def main():
     for name in sorted(glob.glob(trial_dir+'/*.metadata')):
         fname = name.replace(trial_dir, "")
 
-
-
-        if 'FalconEasy-StaticMap_Trial-268' in name:
-            begin_parsing = True
-            continue
-        if begin_parsing is False: continue
+        # if 'Trial-130_' not in name: continue
+        # if 'Trial-128_' in name:
+        #     begin_parsing = True
+        #     continue
+        # if begin_parsing is False: continue
 
 
         # ----------------------------------------------------------------------
         # Get the information out of the filename
         # ----------------------------------------------------------------------
-        s = re.search(r'TrialMessages_CondBtwn-(.*)_CondWin-Falcon(.*)-.*Trial-(.*)_Team.*_Member-(.*)_', name)
-        member_id = s.group(4)
-        trial_id = s.group(3)
+        s = re.search(r'TrialMessages_CondBtwn-(.*)_CondWin-Falcon(.*)-(.*)_Trial-(.*)_Team.*_Member-(.*)_', name)
+        member_id = s.group(5)
+        trial_id = s.group(4)
         complexity = s.group(2)
-        training = s.group(1)
+        training = s.group(1) + ' ' + s.group(3)
         if complexity == 'Med': complexity = 'Medium'
 
         # ----------------------------------------------------------------------
@@ -132,22 +150,34 @@ def main():
 
         # ----------------------------------------------------------------------
         # Pull in the raw data from the json file into a dictionary, keeping
-        # only topic, data, and msg. Originally we had to pull out the "god"
-        # data from the player ASIST3, but that seems to no longer be true in
-        # newer files.
+        # only topic, data, and msg.
         # ----------------------------------------------------------------------
         print(f'------------------\nFILE: {name}\nProcessing {member_id}...')
         print("Loading JSON...")
-        # member_id = 44
-        # trial_id = 97
-        # complexity = 'Hard'
-        # training = 'TriageSignal'
-        # with open('/home/erik_jones/git/asist/Python/study-1_2020.08_HSRData_TrialMessages_CondBtwn-TriageSignal_CondWin-FalconHard-DynamicMap_Trial-97_Team-na_Member-44_Vers-1.metadata') as f:
         with open(trial_dir+fname) as f:
             orig_data = json.loads("[" + f.read().replace("}\n{", "},\n{") + "]")
         data = []
+        god_accounts = ("ASIST2", "ASIST3", "ASIST6", "ASU_MC")
+        start_data = False
         try:
             for line in orig_data:
+                # Don't process lines before the mission timer starts
+                if start_data is False:
+                    if line['topic'] == 'observations/events/mission' and line['data']['mission_state'] == 'Start':
+                        start_data = True
+                    else:
+                        if line['topic'] != 'ground_truth/mission/victims_list':
+                            continue
+                # Skip the God accounts
+                if line.get('name', None) in god_accounts:
+                    continue
+                if line['data'].get('name', None) in god_accounts:
+                    continue
+                if line['data'].get('playername', None) in god_accounts:
+                    continue
+                if line['topic'] == 'observations/events/scoreboard':
+                    for g in god_accounts:
+                        line['data']['scoreboard'].pop(g, None)
                 data.append({
                     'data': line['data'],
                     'topic': line['topic'],
@@ -158,45 +188,10 @@ def main():
             continue
 
         # for i, d in enumerate(data):
-        #     if d['topic'] == 'ground_truth/mission/blockages_list':
-        #         pprint.pprint(d, indent=2)
+        #     if d['topic'] == 'observations/events/mission':
+        #         pprint(d, indent=2)
         #         print('----------------------')
         # sys.exit()
-
-        # ----------------------------------------------------------------------
-        # Replace the FoV data in this file with the new separate FoV data.
-        # Hopefully this will only be temporary.
-        # ----------------------------------------------------------------------
-        try:
-            print("Replacing FoV data...")
-            fovname = fname.replace('.metadata', '.fov')
-            with open(fov_dir + fovname) as f:
-            # with open('/home/erik_jones/git/asist/Python/study-1_2020.08_HSRData_TrialMessages_CondBtwn-TriageSignal_CondWin-FalconHard-DynamicMap_Trial-97_Team-na_Member-44_Vers-1.fov') as f:
-                fov = json.loads("[" + f.read().replace("}\n{", "},\n{") + "]")
-            fovd = {}
-            for x in fov: fovd[x['data']['observation']] = x
-            newdata = []
-            for d in data:
-                # Find fov messages in the trial data
-                if d['topic'] == 'agent/pygl_fov/player/3d/summary':
-                    n = d['data']['observation']
-                    # Discard any fov message from the original data that is not
-                    # found in the new fov data
-                    if n not in fovd:
-                        continue
-                    # Replace it with the message from the fov data
-                    x = fovd[n]
-                    newdata.append({
-                        'data': x['data'],
-                        'topic': 'agent/pygl_fov/player/3d/summary',
-                        'msg': x['msg']
-                    })
-                else:
-                    newdata.append(d)
-            data = newdata
-        except FileNotFoundError as e:
-            write_error(f"No FoV file found for this metadata")
-            continue
 
         # ----------------------------------------------------------------------
         # Before we convert to a dataframe, go backwards through the events
@@ -338,30 +333,34 @@ def main():
         # the order of three columns in the order of Easy, Medium, and Hard. If
         # the numbers are 213, the order of those three columns are Q212=Medium,
         # Q221=Easy, Q230=Hard. Start with getting Column o, and turning it into
-        # a three-digit string.
+        # a three-digit string. Also get original strategies.
         # ----------------------------------------------------------------------
         try:
             # Correct that these look like dates, i.e. 01/02/2003
-            o = survey_df.at[subject_id, 'o'].replace('/', '').replace('200', '')
+            o = survey_df.at[subject_id, 'o'].replace('/', '').replace('200', '').replace('0', '')
+            if len(o) != 3:
+                print("o is not three characters long:", o)
+                sys.exit()
             # Figure out which number to look for based on the complexity
-            seek = {
-                'Easy': int(o[0]),
-                'Medium': int(o[1]),
-                'Hard': int(o[2])
-            }[complexity] - 1
-            # Do the same for the workload columns
-            workload_column = ('Q212', 'Q221', 'Q230')[seek]
+            diff_num = {'Easy': '1', 'Medium': '2', 'Hard': '3'}[complexity]
+            o_index = int(o.index(diff_num))
+            #
+            # print('o:', o, 'diff_num:', diff_num, 'comp:', complexity, 'o_index:', o_index)
+            #
+            workload_column = ('Q212', 'Q221', 'Q230')[o_index]
             workload = int(survey_df.at[subject_id, workload_column])
+            vs_column = ('Q208_vic', 'Q217_vic', 'Q226_vic')[o_index]
+            orig_victim_strategy = survey_df.at[subject_id, vs_column]
+            ns_column = ('Q208_Nav2', 'Q217_Nav2', 'Q226_Nav2')[o_index]
+            orig_nav_strategy = survey_df.at[subject_id, ns_column]
+            if orig_victim_strategy == 'Insufficient':
+                orig_victim_strategy = 'Sequential'
+            if orig_nav_strategy == 'Insufficient':
+                orig_nav_strategy = 'Sequential'
         except KeyError as e:
             workload = None
-
-        # ----------------------------------------------------------------------
-        # Create original victim and navigation strategies. Right now, this is
-        # hard-coded, though will hopefully be changed in the future to reflect
-        # the survey answers.
-        # ----------------------------------------------------------------------
-        orig_victim_strategy = 'Yellow Only'
-        orig_nav_strategy = 'Yellow First'
+            orig_victim_strategy = 'Sequential'
+            orig_nav_strategy = 'Sequential'
 
         # ----------------------------------------------------------------------
         # Get videogaming experience, using only the calculable numbers from
@@ -406,25 +405,6 @@ def main():
         #               'y': 60,
         #               'z': 186}
         # ----------------------------------------------------------------------
-        # NOTE: This is the version of the victim list from the FoV messages.
-        # We don't use this, except for sanity checking.
-        print("Creating victim list from FoV...")
-        fov_victim_list = {}
-        for i, r in df.iterrows():
-            if r['topic'] == 'agent/pygl_fov/player/3d/summary':
-                for b in r['data_blocks']:
-                    if not b['type'].startswith('block_victim'): continue
-                    (vx, vy, vz) = b['location']
-                    key = (vx, vy, vz)
-                    if key in fov_victim_list: continue
-                    fov_victim_list[key] = {
-                        'x': vx, 'y': vy, 'z': vz,
-                        'color': 'Green' if b['type'] == 'block_victim_1' else 'Yellow',
-                        'room': coordinates[complexity][(vx, vz)]['room']
-                    }
-
-        # NOTE: This is the version of the victim list from the ground truth.
-        # We use this as our actual victim list.
         print("Creating victim list from ground truth...")
         victim_list = {}
         for i, r in df[df['topic']=='ground_truth/mission/victims_list'].iterrows():
@@ -440,22 +420,8 @@ def main():
                 }
 
         # ----------------------------------------------------------------------
-        # OLD IDEA: Remove from the list of trigger rooms any room that does not
-        # have a victim in it.
-        #
-        # NEW IDEA: Remove Right Hallway ('rh') only.
+        # Remove Right Hallway ('rh') only.
         # ----------------------------------------------------------------------
-        # tmpvr = []
-        # for k, v in victim_list.items():
-        #     if v['room'] not in tmpvr: tmpvr.append(v['room'])
-        # newtr = []
-        # for t in trigger_rooms[complexity]:
-        #     if t in tmpvr: newtr.append(t)
-        # trigger_rooms[complexity] = newtr
-        # for k, v in coordinates[complexity].items():
-        #     if 'trigger' in v:
-        #         if v['trigger'] not in tmpvr:
-        #             v.pop('trigger')
         if 'rh' in trigger_rooms[complexity]:
             trigger_rooms[complexity].remove('rh')
         for k, v in coordinates[complexity].items():
@@ -464,7 +430,40 @@ def main():
                     v.pop('trigger')
 
         # ----------------------------------------------------------------------
-        # Create room entered and exited events, as well as the last and next room
+        # Correct the bug where a player triages a victim but is not in the room
+        # where the player is. This inserts room location data at the previous
+        # location message, using the room where the victim is triaged.
+        # ----------------------------------------------------------------------
+        print("Correcting location errors...")
+        try:
+            last_loc_i = 0
+            room = None
+            for i, r in df.iterrows():
+                if (
+                    r['data_locations'] not in (np.nan, np.NaN, '', 'nan', 'NaN') and
+                    r['topic'] == 'observations/events/player/location'
+                ):
+                    room = r['data_locations'][0]['id']
+                    if room == 'UNKNOWN': room = None
+                elif (
+                    r['data_connections'] != np.NaN
+                    and r['data_locations'] in (np.nan, np.NaN, '', 'nan', 'NaN')
+                    and r['topic'] == 'observations/events/player/location'
+                ):
+                    # print(i, ': misfire:', r['data_connections'])
+                    last_loc_i = i
+                elif (r['data_triage_state']=='SUCCESSFUL'):
+                    loc = (r['data_victim_x'], r['data_victim_y'], r['data_victim_z'])
+                    # print(i, ':', 'Triage in room', victim_list[loc]['room'])
+                    if room != victim_list[loc]['room']:
+                        # print("**********NO MATCH", last_loc_i)
+                        df.at[last_loc_i, 'data_locations'] = [{'id': victim_list[loc]['room']}]
+        except Exception as e:
+            write_error("There was an error in the location data that could not be resolved")
+            continue
+
+        # ----------------------------------------------------------------------
+        # Create room entered and exited events, as well as the last and next room.
         # ----------------------------------------------------------------------
         last_room = ''
         last_i = -1
@@ -586,15 +585,6 @@ def main():
                     return key
             print("ERROR: Could not find room name", name, "-- check semantic map", complexity)
             sys.exit()
-        # Determines the type of each room.
-        # 0) no victims, 1) one or more yellow victims,
-        # 2) One or more green victims, 3) a mix of green and yellow.
-        def update_room_types(room_victims):
-            for k, v in room_victims.items():
-                if   v['Yellow'] == 0 and v['Green'] == 0: v['type'] = 0
-                elif v['Yellow'] >  0 and v['Green'] == 0: v['type'] = 1
-                elif v['Yellow'] == 0 and v['Green'] >  0: v['type'] = 2
-                elif v['Yellow'] >  0 and v['Green'] >  0: v['type'] = 3
         print("Creating room_victims list...")
         room_victims = {'total': {'Green': 0, 'Yellow': 0, 'type': 0}}
         for v in df['data_mission_victim_list'][df['data_mission_victim_list'].notnull()].values[0]:
@@ -603,16 +593,19 @@ def main():
             if room_id not in room_victims:
                 room_victims[room_id] = {'Green': 0, 'Yellow': 0, 'type': 0}
             if v['block_type'] == 'block_victim_1':
-                room_victims['total']['Green'] += 1
                 room_victims[room_id]['Green'] += 1
             elif v['block_type'] == 'block_victim_2':
-                room_victims['total']['Yellow'] += 1
                 room_victims[room_id]['Yellow'] += 1
         update_room_types(room_victims)
         # Create rooms in room_victims for rooms with zero victims
         for id, r in rooms[complexity].items():
             if id not in room_victims:
-                room_victims[id] = {'Green': 0, 'Yellow': 0, 'type': 0}
+                if id in room_to_parent[d]:
+                    x = room_to_parent[d][id]
+                    if x not in room_victims:
+                        room_victims[x] = {'Green': 0, 'Yellow': 0, 'type': 0}
+                else:
+                    room_victims[id] = {'Green': 0, 'Yellow': 0, 'type': 0}
 
         # ----------------------------------------------------------------------
         # Fills the event rows that have blank values with their values from the previous row
@@ -667,7 +660,8 @@ def main():
 
         # ----------------------------------------------------------------------
         # Determine the victims and openings in view at any moment and put into
-        # 'ext_victims_in_view' and 'ext_blockages_in_view'.
+        # 'ext_victims_in_view' and 'ext_blockages_in_view'. Also add the time
+        # in seconds remaining that the victim was first seen.
         # ----------------------------------------------------------------------
         print("Creating victims and blockages in view...")
         df['ext_victims_in_view'] = np.NaN
@@ -698,7 +692,7 @@ def main():
 
         # ----------------------------------------------------------------------
         # Determine average time between yellow victims entering the FoV for the
-        # first time, and also green victims.
+        # first time, and also green victims. Insert it into the events list.
         # ----------------------------------------------------------------------
         vlast = {"Green": None, "Yellow": None}
         vtime = {"Green": 0, "Yellow": 0}
@@ -712,8 +706,35 @@ def main():
             vtime[c] += (vlast[c] - v['first_seen'])
             vlast[c] = v['first_seen']
             vnumber[c] += 1
-        green_search_time = vtime['Green'] / vnumber['Green']
-        yellow_search_time = vtime['Yellow'] / vnumber['Yellow']
+            if vnumber['Green'] > 0:
+                v['green_search_time'] = vtime['Green'] / vnumber['Green']
+            else:
+                v['green_search_time'] = None
+            if vnumber['Yellow'] > 0:
+                v['yellow_search_time'] = vtime['Yellow'] / vnumber['Yellow']
+            else:
+                v['yellow_search_time'] = None
+        df['ext_green_search_time'] = np.NaN
+        df['ext_yellow_search_time'] = np.NaN
+        for i, r in df[(df['ext_event']=='victim_triaged') | (df['ext_event']=='room_entered')].iterrows():
+            sr = r['ext_seconds_remaining']
+            if sr in (None, '', np.NaN, np.nan) or sr > 600:
+                df.at[i, 'ext_green_search_time'] = None
+                df.at[i, 'ext_yellow_search_time'] = None
+                continue
+            # print('-------------------')
+            # print('sr from events:', sr)
+            for k, v in sorted(victim_list.items(), key=lambda x: x[1].get('first_seen', 1000), reverse=True):
+                fs = v.get('first_seen', None)
+                gst = v.get('green_search_time', None)
+                yst = v.get('yellow_search_time', None)
+                if fs is None: continue
+                if sr <= fs:
+                    # print('fs:', fs, 'gst:', gst, 'yst:', yst)
+                    df.at[i, 'ext_green_search_time'] = gst
+                    df.at[i, 'ext_yellow_search_time'] = yst
+        df['ext_green_search_time'].fillna(method='ffill', inplace=True)
+        df['ext_yellow_search_time'].fillna(method='ffill', inplace=True)
 
         # ----------------------------------------------------------------------
         # Determine victims seen since last room_entered event and put them in 'ext_victims_seen'
@@ -755,9 +776,12 @@ def main():
             if r['ext_event'] == 'room_entered':
                 if len(vl) == 0:
                     df.at[i, 'ext_rooms_skipped'] = []
+                    continue
                 vlx = []
                 for k, v in vl.items():
-                    vlx.append({'id': k, 'type': v})
+                    # Can't have skipped current room
+                    if r['ext_room_id'] == k: continue
+                    vlx.append({'id': k, 'index': i})
                 df.at[i, 'ext_rooms_skipped'] = vlx
                 vl = {}
                 continue
@@ -765,13 +789,10 @@ def main():
             if r['ext_room_skipped'] is None: continue
             # Add the room skipped to the set, accounting for the fact that
             # if it's after five minutes, all yellow victims are expired
-            id = r['ext_room_skipped']
-            if i < expire_index:
-                vl[id] = room_victims[id]['type']
-            else:
-                green = room_victims[id]['Green']
-                if green == 0: vl[id] = 0
-                else: vl[id] = 2
+            # NOTE: We are NOT saving the type of room that was skipped here
+            # because we have to account for it later in the time-based system.
+            # Instead we are saving the index row of when the room was skipped.
+            vl[r['ext_room_skipped']] = i
 
         # ----------------------------------------------------------------------
         # Create a new df, event_df, to contain all event rows with events. This
@@ -785,25 +806,33 @@ def main():
 
         # ----------------------------------------------------------------------
         # SANITY CHECK: Was the player actually in a room that is on the
-        # trigger list if a victim was triaged?
+        # trigger list if a victim was triaged? Was the room containing the
+        # victim that was triaged actually the room the player was in?
         # ----------------------------------------------------------------------
-        is_error = False
-        try:
-            for i, row in event_df.iterrows():
-                if row['ext_event'] != 'victim_triaged': continue
-                if rooms[complexity][row['ext_sanity_room_loc']]['name'] not in sanity_rooms[complexity]:
-                    write_error(f"***ERROR***: {i} :: SANITY ROOM {rooms[complexity][row['ext_sanity_room_loc']]['name']} NOT IN TRIGGER ROOMS")
-                    is_error = True
-                    break
-        except Exception as e:
-            pass
-        if is_error: continue
+        # is_error = False
+        # try:
+        #     for i, row in event_df.iterrows():
+        #         if row['ext_event'] != 'victim_triaged': continue
+        #         # print("In room:", row['ext_room_id'], "Victim in:", victim_list[coords]['room'])
+        #         if rooms[complexity][row['ext_sanity_room_loc']]['name'] not in sanity_rooms[complexity]:
+        #             write_error(f"***ERROR***: {i} :: SANITY ROOM {rooms[complexity][row['ext_sanity_room_loc']]['name']} NOT IN TRIGGER ROOMS")
+        #             is_error = True
+        #             break
+        #         coords = (row['data_victim_x'], row['data_victim_y'], row['data_victim_z'])
+        #         if row['ext_room_id'] != victim_list[coords]['room']:
+        #             write_error(f"***ERROR***: {i} :: Player was in room {row['ext_room_id']} but victim was in {victim_list[coords]['room']}")
+        #             is_error = True
+        #             break
+        # except Exception as e:
+        #     pass
+        # if is_error: continue
 
         # ----------------------------------------------------------------------
-        # Fill in empty scores
+        # Fill in empty scores and timers
         # ----------------------------------------------------------------------
         event_df['data_score'].fillna(method='ffill', inplace=True)
         event_df['data_score'].fillna(value=0, inplace=True)
+        event_df['ext_seconds_remaining'].fillna(value=600, inplace=True)
 
         # ----------------------------------------------------------------------
         # Determine the distance to the next victim and put in ext_next_victim_distance
@@ -830,88 +859,126 @@ def main():
             event_df.at[i, 'ext_total_yellow_victims_remaining'] = yellow
 
         # ----------------------------------------------------------------------
+        # Let's try something different. Let's create a time series list of
+        # of room_victims. This will be a of room_victims dictionaries but
+        # specifically with the starting and ending index numbers that it's
+        # good for. Then later we can find the specific room_victims dictionary
+        # that we need for any given moment.
+        # { 'i_begin': 16173,
+        # 'i_end': 16750,
+        # 'room_victims': { 'acr': {'Green': 0, 'Yellow': 0, 'type': 0},
+        #                   'br': {'Green': 2, 'Yellow': 0, 'type': 2},
+        # ----------------------------------------------------------------------
+        rownums = list(event_df[event_df['ext_event']=='victim_triaged'].index)
+        tsrv = [] # stands for time series room victims
+        tmp_room_victims = duplicate_rv(room_victims)
+        for i, row in event_df[event_df['ext_event']=='victim_triaged'].iterrows():
+            r = row['ext_room_id']
+            if len(tsrv) == 0:
+            # Put a clean copy of room_victims at the start
+                tsrv.append({
+                    'i_begin': 1, # It starts at the beginning
+                    'i_end': i-1, # It ends at the previous row
+                    'room_victims': duplicate_rv(tmp_room_victims)
+                } )
+            if rownums.index(i) + 1 == len(rownums):
+                next_i = 999999
+            else:
+                next_i = rownums[rownums.index(i) + 1] - 1
+            # Else if the triaged victim was yellow, decrease yellows by 1
+            if row['data_color'] == 'Yellow':
+                tmp_room_victims[r]['Yellow'] -= 1
+            # If the triaged victim was green, decrease greens by 1
+            elif row['data_color'] == 'Green':
+                tmp_room_victims[r]['Green'] -= 1
+            # The type of room that it is has to be updated at each point
+            update_room_types(tmp_room_victims)
+            if not i < expire_index < next_i:
+                tsrv.append({
+                    'i_begin': i, # It starts now, at this row index
+                    'i_end': next_i, # It ends at the next row index
+                    'room_victims': duplicate_rv(tmp_room_victims)
+                } )
+                continue
+            else:
+                tsrv.append({
+                    'i_begin': i, # It starts now, at this row index
+                    'i_end': expire_index - 1, # It ends before the expire_index
+                    'room_victims': duplicate_rv(tmp_room_victims)
+                } )
+                for k, v in tmp_room_victims.items():
+                    if 'Yellow' in v: v['Yellow'] = 0
+                update_room_types(tmp_room_victims)
+                tsrv.append({
+                    'i_begin': expire_index, # It starts at the expire_index
+                    'i_end': next_i, # It ends at the next row index
+                    'room_victims': duplicate_rv(tmp_room_victims)
+                } )
+
+        # ----------------------------------------------------------------------
+        # Update the type of room that was skipped at each point
+        # ----------------------------------------------------------------------
+        def get_room_victims(rownum):
+            for x in tsrv:
+                if x['i_begin'] <= rownum <= x['i_end']:
+                    return x['room_victims']
+            print("ERROR: No room victims found.")
+            print("i is", i)
+            pprint(tsrv)
+            sys.exit()
+        for i, row in event_df[event_df['ext_event']=='room_entered'].iterrows():
+            for room in row['ext_rooms_skipped']:
+                # rv is the room_victims list for this exact moment in time
+                rv = get_room_victims(room['index'])
+                room['type'] = rv[room['id']]['type']
+
+        # ----------------------------------------------------------------------
         # Determine green and yellow victims in current room, and other
         # calculations that rely on the current state of a room (not the original
-        # state of the room). This is where things can get a little dicey.
-        # tmp_room_victims is a deepcopy of the original room_victims, and
-        # tmp_room_victims will change every time a victim is triaged (or dies).
+        # state of the room).
         # ----------------------------------------------------------------------
-        tmp_room_victims = copy.deepcopy(room_victims)
-        last_room_type = 0
+        last_room_id = None
         cum_empty = 0
         cum_full = 0
         event_df['ext_exited_room_type'] = np.NaN
-        for i, row in event_df.iterrows():
+        for i, row in event_df[event_df['ext_event']=='room_entered'].iterrows():
+            rv = get_room_victims(i)
             r = row['ext_room_id']
-            if row['ext_event'] == 'room_entered':
-                # Set ext_exited_room_type to the type of room they just left
-                event_df.at[i, 'ext_exited_room_type'] = last_room_type
-                # If there are skipped rooms, update those types as well
-                if isinstance(row['ext_rooms_skipped'], list):
-                    for j, s in enumerate(row['ext_rooms_skipped']):
-                        event_df.at[i, 'ext_rooms_skipped'][j]['type'] = tmp_room_victims[s['id']]['type']
-                # Set cumulative totals of types of rooms
-                if tmp_room_victims[r]['type'] == 0: cum_empty += 1
-                else: cum_full += 1
-                event_df.at[i, 'ext_rooms_entered_empty'] = cum_empty
-                event_df.at[i, 'ext_rooms_entered_not_empty'] = cum_full
-            # Does the room have any victims?
-            if r not in tmp_room_victims:
-                event_df.at[i, 'ext_yellow_victims_in_current_room'] = 0
-                event_df.at[i, 'ext_green_victims_in_current_room'] = 0
-                continue
-            # If the row is greater than the expire_index (when all yellows die)
-            # then yellow must be zero
-            if i >= expire_index:
-                tmp_room_victims[r]['Yellow'] = 0
-            # Else if the triaged victim was yellow, decrease yellows by 1
-            elif row['data_color'] == 'Yellow':
-                tmp_room_victims[r]['Yellow'] -= 1
-            # If the triaged victim was green, decrease greens by 1
-            if row['data_color'] == 'Green':
-                tmp_room_victims[r]['Green'] -= 1
-            event_df.at[i, 'ext_yellow_victims_in_current_room'] = tmp_room_victims[r]['Yellow']
-            event_df.at[i, 'ext_green_victims_in_current_room'] = tmp_room_victims[r]['Green']
-            # The type of room that it is has to be updated at each point
-            update_room_types(tmp_room_victims)
-            last_room_type = tmp_room_victims[r]['type']
-            event_df.at[i, 'ext_room_type'] = last_room_type
+            # Set cumulative totals of types of rooms
+            if rv[r]['type'] == 0: cum_empty += 1
+            else: cum_full += 1
+            event_df.at[i, 'ext_rooms_entered_empty'] = cum_empty
+            event_df.at[i, 'ext_rooms_entered_not_empty'] = cum_full
+            # Set number of victims in current room
+            event_df.at[i, 'ext_yellow_victims_in_current_room'] = rv[r]['Yellow']
+            event_df.at[i, 'ext_green_victims_in_current_room'] = rv[r]['Green']
+            # Set room types of this room and last room
+            event_df.at[i, 'ext_room_type'] = rv[r]['type']
+            if last_room_id is not None:
+                # print(f"i {i} thisroom {r} thistype {rv[r]['type']} lastroom {last_room_id} lasttype {rv[last_room_id]['type']}")
+                event_df.at[i, 'ext_exited_room_type'] = rv[last_room_id]['type']
+            last_room_id = r
 
         # ----------------------------------------------------------------------
         # Determine who was left behind when leaving a room.
         # ----------------------------------------------------------------------
-        # Copy the victims seen into a left-behind column
-        event_df['ext_left_behind'] = event_df['ext_victims_seen']
-        # First we have to remove any triaged victim from any *future* left-
-        # behind information, since they are not left behind.
-        for i, vt_row in event_df[event_df['ext_event']=='victim_triaged'].iterrows():
-            loc = (vt_row['data_victim_x'], vt_row['data_victim_y'], vt_row['data_victim_z'])
-            # Look at every room entered event after the victim triaged event
-            for j, re_row in event_df[event_df['ext_event']=='room_entered'].iterrows():
-                if j < i: continue
-                if loc in re_row['ext_left_behind']:
-                    re_row['ext_left_behind'].remove(loc)
-        # Now we have to calculate anyone from the left-behind list that was in
-        # the room they just exited
-        for i, r in event_df[event_df['ext_event']=='room_entered'].iterrows():
-            (g, y) = (0, 0)
-            for v in r['ext_left_behind']:
-                if victim_list[v]['room'] == r['data_exited_area_id']:
-                    if victim_list[v]['color'] == 'Green': g += 1
-                    elif victim_list[v]['color'] == 'Yellow': y += 1
-            event_df.at[i, 'ext_left_behind_green'] = g
-            event_df.at[i, 'ext_left_behind_yellow'] = y
+        for i, row in event_df[event_df['ext_event']=='room_entered'].iterrows():
+            rv = get_room_victims(i)
+            r = row['data_exited_area_id']
+            if r == '': continue
+            event_df.at[i, 'ext_left_behind_green'] = rv[r]['Green']
+            event_df.at[i, 'ext_left_behind_yellow'] = rv[r]['Yellow']
 
         # ----------------------------------------------------------------------
         # Determine victim strategy at each event. This logic encapsulates the
         # New Victim Strategies tab.
         # ----------------------------------------------------------------------
         def compute_victim_strategy(c, r):
-            (y, m, s, g) = ('Yellow Only', 'Mixed', 'Sequential', 'Green Only')
-            if   c == 'Yellow Only': p = [y, m, y, y, m, m]
+            (y, m, s, g) = ('Yellow First', 'Mixed', 'Sequential', 'Green First')
+            if   c == 'Yellow First': p = [y, m, y, y, m, m]
             elif c == 'Sequential':  p = [s, s, s, y, m, g]
             elif c == 'Mixed':       p = [m, m, s, y, m, g]
-            elif c == 'Green Only':  p = [m, g, g, m, m, g]
+            elif c == 'Green First':  p = [m, g, g, m, m, g]
             if r['ext_event'] == 'victim_triaged':
                 if r['data_color'] == 'Yellow': return p[0]
                 if r['data_color'] == 'Green': return p[1]
@@ -919,13 +986,20 @@ def main():
             if r['ext_exited_room_type'] == 2: return p[3]
             if r['ext_exited_room_type'] == 3: return p[4]
             if r['ext_exited_room_type'] == 1: return p[5]
-            raise Exception(f"ERROR: Could not determine victim strategy, current: {current_strategy}, color: {r['data_color']}, exited: {r['ext_exited_room_type']}")
+            return c
+            # raise Exception(f"ERROR: Could not determine victim strategy, current: {c}, color: {r['data_color']}, exited: {r['ext_exited_room_type']}")
         victim_strategy = orig_victim_strategy
-        for i, row in event_df.iterrows():
+        for i, r in event_df.iterrows():
             if i >= expire_index:
-                victim_strategy = 'Green Only'
+                victim_strategy = 'Green First'
             else:
-                victim_strategy = compute_victim_strategy(victim_strategy, row)
+                # print('--------------------')
+                # print(f"i {i} event {r['ext_event']}")
+                # print(f"old vs {victim_strategy}")
+                # print(f"color {r['data_color']}")
+                # print(f"exited room type {r['ext_exited_room_type']}")
+                victim_strategy = compute_victim_strategy(victim_strategy, r)
+                # print(f"new vs {victim_strategy}")
             event_df.at[i, 'ext_victim_strategy'] = victim_strategy
 
         # ----------------------------------------------------------------------
@@ -935,41 +1009,86 @@ def main():
         def compute_nav_strategy(c, r):
             (y, m, s, a, g) = ('Yellow First', 'Mixed', 'Sequential', 'Avoid Empty', 'Green First')
             id = r['data_entered_area_id']
-            # SKIP: 0 = None, 1 = Green Only, 2 = Yellow/Mixed, 3 = Empty
-            skip = 0
+            # Room and Skip Types: 0 = Empty, 1 = Yellow/Mixed, 2 = Green
+            t = r['ext_room_type']
+            if t == 3: t = 1 # Change Mixed (3) to Yellow/Mixed (1)
+            skip = []
             if isinstance(r['ext_rooms_skipped'], list):
                 for x in r['ext_rooms_skipped']:
-                    if skip == 2: continue
-                    elif x['type'] in (1, 3): skip = 2
-                    elif x['type'] == 2 and skip in (0, 3): skip = 1
-                    elif x['type'] == 0 and skip == 0: skip = 3
-            t = r['ext_room_type']
-            # print("They entered room", id, "of type (",
-            #     ('empty', 'yellow/mixed', 'green only', 'yellow/mixed')[int(t)],
-            #     ") and skipped (",
-            #     ('no', 'green only', 'yellow/mixed', 'empty')[skip], ") rooms"
-            # )
-            if c == 'Yellow First':
-                if t in (1, 3): p = [y, y, m, a]
-                elif t == 2:    p = [s, m, m, a]
-                elif t == 0:    p = [s, m, m, m]
-            elif c == 'Avoid Empty':
-                if t in (1, 3): p = [a, y, m, a]
-                elif t == 2:    p = [a, m, m, a]
-                elif t == 0:    p = [s, m, m, m]
-            elif c == 'Sequential':
-                if t in (1, 3): p = [s, y, m, a]
-                elif t == 2:    p = [s, m, m, a]
-                elif t == 0:    p = [s, m, m, m]
-            elif c == 'Green First':
-                if t in (1, 3): p = [s, m, m, a]
-                elif t == 2:    p = [g, m, m, g]
-                elif t == 0:    p = [s, m, m, m]
-            elif c == 'Mixed':
-                if t in (1, 3): p = [m, y, m, a]
-                elif t == 2:    p = [s, m, m, a]
-                elif t == 0:    p = [s, m, m, m]
-            return p[skip]
+                    ti = x['type']
+                    if ti == 3: ti = 1 # Change Mixed (3) to Yellow/Mixed (1)
+                    if ti not in skip: skip.append(ti)
+            if c == y:
+                if t == 1:
+                    if len(skip) == 0: return y # 2
+                    elif 1 in skip: return m # 3
+                    elif 1 not in skip: return y # 4
+                elif t == 2:
+                    if len(skip) == 0: return s # 5
+                    elif 1 not in skip and 2 not in skip: return a # 6
+                    elif len(skip) == 1 and 1 in skip: return m # 7
+                    elif 2 in skip: return m # 8
+                    elif 2 not in skip: return g # 9
+                elif t == 0:
+                    if len(skip) == 0: return s # 10
+                    elif len(skip) > 0: return m # 11
+            elif c == a:
+                if t == 1:
+                    if len(skip) == 0: return a # 12
+                    elif 1 not in skip and 2 not in skip: return a # 13
+                    elif 1 in skip: return m # 14
+                    elif 1 not in skip: return y # 15
+                elif t == 2:
+                    if len(skip) == 0: return a # 16
+                    elif 1 not in skip and 2 not in skip: return a # 17
+                    elif 2 in skip: return m # 18
+                    elif 2 not in skip: return g # 19
+                elif t == 0:
+                    if len(skip) == 0: return s # 20
+                    elif len(skip) > 0: return m # 21
+            elif c == s:
+                if t == 1:
+                    if len(skip) == 0: return s # 22
+                    elif 1 not in skip and 2 not in skip: return a # 23
+                    elif 1 in skip: return m # 24
+                    elif 1 not in skip: return y # 25
+                elif t == 2:
+                    if len(skip) == 0: return s # 26
+                    elif 1 not in skip and 2 not in skip: return a # 27
+                    elif 2 in skip: return m # 28
+                    elif 2 not in skip: return g # 29
+                elif t == 0:
+                    if len(skip) == 0: return s # 30
+                    elif len(skip) > 0: return m # 31
+            elif c == g:
+                if t == 1:
+                    if len(skip) == 0: return s # 32
+                    elif 1 not in skip and 2 not in skip: return a # 33
+                    elif 1 in skip: return m # 34
+                    elif 1 not in skip: return y # 35
+                elif t == 2:
+                    if len(skip) == 0: return g # 36
+                    elif 2 in skip: return m # 37
+                    elif 2 not in skip: return g # 38
+                elif t == 0:
+                    if len(skip) == 0: return s # 39
+                    elif len(skip) > 0: return m # 40
+            elif c == m:
+                if t == 1:
+                    if len(skip) == 0: return s # 41
+                    elif 1 not in skip and 2 not in skip: return a # 42
+                    elif 1 in skip: return m # 43
+                    elif 1 not in skip: return y # 44
+                elif t == 2:
+                    if len(skip) == 0: return s # 45
+                    elif 1 not in skip and 2 not in skip: return a # 46
+                    elif 2 in skip: return m # 47
+                    elif 2 not in skip: return m # 48
+                elif t == 0:
+                    if len(skip) == 0: return s # 49
+                    elif len(skip) > 0: return m # 50
+            print("ERROR: Nav Strategy not found")
+            sys.exit()
         nav_strategy = orig_nav_strategy
         for i, row in event_df.iterrows():
             # Do not calculate a navigation strategy unless they've entered a
@@ -987,7 +1106,7 @@ def main():
         # (e.g. current strategy = “yellow only”, player enters trigger
         # block > one beep (“green only room”) > does not enter room) 
         # Keep the running total of each one of those two things.
-        # victim strategies: ('Yellow Only', 'Mixed', 'Sequential', 'Green Only')
+        # victim strategies: ('Yellow First', 'Mixed', 'Sequential', 'Green First')
         # ----------------------------------------------------------------------
         (consistent, inconsistent) = (0, 0)
         for i, row in event_df[event_df['ext_event']=='room_entered'].iterrows():
@@ -999,10 +1118,10 @@ def main():
                     if vs in ('Sequential'): inconsistent += 1
                     else: consistent += 1
                 elif s['type'] == 1: # Yellow only room
-                    if vs in ('Yellow Only', 'Mixed', 'Sequential'): inconsistent += 1
+                    if vs in ('Yellow First', 'Mixed', 'Sequential'): inconsistent += 1
                     else: consistent += 1
-                elif s['type'] == 2: # Green Only room
-                    if vs in ('Green Only', 'Mixed', 'Sequential'): inconsistent += 1
+                elif s['type'] == 2: # Green First room
+                    if vs in ('Green First', 'Mixed', 'Sequential'): inconsistent += 1
                     else: consistent += 1
                 elif s['type'] == 3: # Both
                     inconsistent += 1
@@ -1019,31 +1138,31 @@ def main():
         # ext_seconds_remaining at expire_index. Data is stored in vs_data.
         # Sample data:
         # 'Mixed': {'time_spent': 556.0, 'score': 230, 'points_per_minute': 46},
-        # 'Yellow Only': {'time_spent': 34.0, 'score': , 'points_per_minute': }
+        # 'Yellow First': {'time_spent': 34.0, 'score': , 'points_per_minute': }
         # ----------------------------------------------------------------------
         def get_strategy_data(event, strategy):
             prev_score = 0
             prev_sr = 600
             data = {}
-            for i, row in event_df.loc[event_df['ext_event']==event].iterrows():
-                vs = row[strategy]
-                if vs not in data: data[vs] = {'time_spent': 0, 'score': 0}
+            for i, row in event_df[event_df['ext_event']==event].iterrows():
+                strat = row[strategy]
+                if strat not in data: data[strat] = {'time_spent': 0, 'score': 0}
                 sr = row['ext_seconds_remaining']
                 score = row['data_score']
                 points_added = score - prev_score
-                data[vs]['score'] += points_added
+                data[strat]['score'] += points_added
                 if sr >= 300:
                     time_elapsed = prev_sr - sr
-                    data[vs]['time_spent'] += time_elapsed
+                    data[strat]['time_spent'] += time_elapsed
                     prev_sr = sr
                     prev_score = score
                 else:
                     time_elapsed = prev_sr - 300
-                    data[vs]['time_spent'] += time_elapsed
+                    data[strat]['time_spent'] += time_elapsed
                     break
             return data
-        nav_data = get_strategy_data('room_entered', 'ext_nav_strategy')
         vs_data = get_strategy_data('victim_triaged', 'ext_victim_strategy')
+        nav_data = get_strategy_data('room_entered', 'ext_nav_strategy')
 
         # ----------------------------------------------------------------------
         # Determine yellow and green victims saved per minute, as well as expected
@@ -1075,10 +1194,13 @@ def main():
         # ----------------------------------------------------------------------
         for x in (vs_data, nav_data):
             for k, v in x.items():
-                v['points_per_minute'] = v['score'] / (v['time_spent'] / 60)
+                if v['time_spent'] != 0:
+                    v['points_per_minute'] = v['score'] / (v['time_spent'] / 60)
+                else:
+                    v['points_per_minute'] = None
 
         # ----------------------------------------------------------------------
-        # Put in Q7 and Q8 survey responses
+        # Put in Q7, Q8 and Q239 survey responses
         # ----------------------------------------------------------------------
         def get_average_response(colname):
             cols = [col for col in survey_df if col.startswith(colname)]
@@ -1089,6 +1211,7 @@ def main():
         except Exception as e:
             q7_average = None
             q8_average = None
+        q239 = survey_df.at[subject_id, 'Q239_new']
 
         # ----------------------------------------------------------------------
         # Create a final dictionary to hold all of the data
@@ -1104,9 +1227,8 @@ def main():
             'videogame_experience': videogame_experience,
             'q7_average': q7_average,
             'q8_average': q8_average,
+            'q239': q239,
             'workload': workload,
-            'green_search_time': green_search_time,
-            'yellow_search_time': yellow_search_time,
             'original_nav_strategy': orig_nav_strategy,
             'navigation_strategy_data': nav_data,
             'original_victim_strategy': orig_victim_strategy,
@@ -1124,6 +1246,8 @@ def main():
                 'seconds_remaining': row['ext_seconds_remaining'],
                 'yellow_victims_in_current_room': row['ext_yellow_victims_in_current_room'],
                 'green_victims_in_current_room': row['ext_green_victims_in_current_room'],
+                'green_search_time': row['ext_green_search_time'],
+                'yellow_search_time': row['ext_yellow_search_time']
             }
             if row['ext_event'] == 'room_entered':
                 e['nav_strategy'] = row['ext_nav_strategy']
